@@ -5,6 +5,7 @@ import RogueLite.characters.skills.Skill;
 import RogueLite.characters.skills.TargetType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Explosion implements Skill {
 
@@ -22,9 +23,9 @@ public class Explosion implements Skill {
       TargetType targetType,
       String name,
       int cooldownValue,
-      int nbTargets,
-      double explosionDamages,
-      boolean isMultiplier) {
+      Integer nbTargets,
+      Double explosionDamages,
+      Boolean isMultiplier) {
     this.targetType = targetType;
     this.name = name;
     this.cooldownValue = cooldownValue;
@@ -72,18 +73,19 @@ public class Explosion implements Skill {
     if (targetType.equals(TargetType.ENNEMY_MULTI_TARGET)
         && nbTargets != null
         && targets.size() >= nbTargets) {
-      trueTargets.addAll(targets.subList(0, nbTargets - 1));
+      trueTargets.addAll(targets.subList(0, nbTargets));
     } else {
       trueTargets.addAll(targets);
     }
     for (Character target : trueTargets) {
-      double damages =
-          target.takeDamage(
-              isMultiplier
-                  ? (caster.getAttackPower() * explosionDamages)
-                  : (explosionDamages != null
-                      ? explosionDamages
-                      : (caster.getAttackPower() * 1.5)));
+      double theoriticalDamages;
+      if (isMultiplier != null && isMultiplier && explosionDamages != null) {
+        theoriticalDamages = caster.getAttackPower() * explosionDamages;
+      } else {
+        theoriticalDamages =
+            Objects.requireNonNullElseGet(explosionDamages, () -> caster.getAttackPower() * 1.5);
+      }
+      double damages = target.takeDamage(theoriticalDamages);
       System.out.println(
           caster.getName()
               + " attacks "

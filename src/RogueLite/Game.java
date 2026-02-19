@@ -78,12 +78,12 @@ public class Game {
                 15,
                 2,
                 3,
-                new SimpleHeal(TargetType.ALLY_SINGLE_LOWEST_HP, "Magic Healing", 3, 30, true)),
+                new SimpleHeal(TargetType.ALLY_SINGLE_LOWEST_HP, "Magic Healing", 3, 30D, true)),
             new Hero(
                 "Mage",
                 15,
                 8,
                 2,
-                new Explosion(TargetType.ENNEMY_MULTI_TARGET, "Triple Beam", 5, 3, 16, true))));
+                new Explosion(TargetType.ENNEMY_MULTI_TARGET, "Triple Beam", 5, 3, 16D, true))));
   }
 }

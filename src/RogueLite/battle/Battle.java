@@ -140,7 +140,7 @@ public class Battle {
                     .map(Character.class::cast)
                     .filter(x -> x != c)
                     .min(Comparator.comparingDouble(x -> x.getHp() / x.getMaxHp()))
-                    .orElseGet(() -> pickFirstAliveExcluding(attacker, c))));
+                    .orElseGet(() -> pickFirstAliveExcluding(defender, c))));
 
       case ENNEMY_SINGLE_HIGHEST_HP:
         return List.of(
@@ -149,7 +149,7 @@ public class Battle {
                     .map(Character.class::cast)
                     .filter(x -> x != c)
                     .max(Comparator.comparingDouble(x -> x.getHp() / x.getMaxHp()))
-                    .orElseGet(() -> pickFirstAliveExcluding(attacker, c))));
+                    .orElseGet(() -> pickFirstAliveExcluding(defender, c))));
 
       case ENNEMY_MULTI_TARGET:
       case ENNEMY_TEAM:

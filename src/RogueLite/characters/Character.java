@@ -206,12 +206,17 @@ public class Character {
   }
 
   public void removeEffectsIfNeeded() {
+    List<Integer> effectToRemove = new ArrayList<>();
     for (int i = 0; i < statusEffects.size(); i++) {
       StatusEffect effect = statusEffects.get(i);
       if (effect.getRemainingTurn() == 0) {
-        effect.removeEffect(this);
-        statusEffects.remove(effect);
+        effectToRemove.add(i);
       }
+    }
+    for (int i : effectToRemove) {
+      StatusEffect effect = statusEffects.get(i);
+      effect.removeEffect(this);
+      statusEffects.remove(effect);
     }
   }
 

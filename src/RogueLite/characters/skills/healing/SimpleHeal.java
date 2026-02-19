@@ -17,7 +17,7 @@ public class SimpleHeal implements Skill {
   public SimpleHeal() {}
 
   public SimpleHeal(
-      TargetType targetType, String name, int cooldownValue, double healed, boolean isPercentage) {
+      TargetType targetType, String name, int cooldownValue, Double healed, Boolean isPercentage) {
     this.targetType = targetType;
     this.name = name;
     this.cooldownValue = cooldownValue;
