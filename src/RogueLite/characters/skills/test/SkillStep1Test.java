@@ -110,6 +110,27 @@ public final class SkillStep1Test {
       expectTrue("t3 damaged", t3.getHp() < b3);
     });
 
+    test("Explosion: ENNEMY_MULTI_TARGET respects nbTargets", () -> {
+      Character caster =
+          new Character(
+              "Mage",
+              new Explosion(
+                  TargetType.ENNEMY_MULTI_TARGET, "Mini Explosion", 3, 2, 4.0, false));
+      Character t1 = new Character("T1", 20, 3, 1, null);
+      Character t2 = new Character("T2", 20, 3, 1, null);
+      Character t3 = new Character("T3", 20, 3, 1, null);
+
+      double b1 = t1.getHp();
+      double b2 = t2.getHp();
+      double b3 = t3.getHp();
+
+      caster.useSkill(List.of(t1, t2, t3));
+
+      expectTrue("t1 damaged", t1.getHp() < b1);
+      expectTrue("t2 damaged", t2.getHp() < b2);
+      expectEquals("t3 unchanged", b3, t3.getHp());
+    });
+
     test("SimpleHeal: targetType is ALLY_SINGLE_LOWEST_HP (as implemented)", () -> {
       Skill s = new SimpleHeal();
       expectEquals("targetType", TargetType.ALLY_SINGLE_LOWEST_HP, s.getTargetType());

@@ -1,6 +1,7 @@
 package RogueLite.characters.test;
 
 import RogueLite.characters.Character;
+import RogueLite.statuseffect.recurrent.Poison;
 
 public final class CharacterStep2Test {
 
@@ -93,6 +94,18 @@ public final class CharacterStep2Test {
       expectEquals("target hp", 0, target.getHp());
     });
 
+    test("removeEffectsIfNeeded removes all expired effects in same call", () -> {
+      Character c = new Character("Tester", 20, 3, 1);
+      c.addEffect(new Poison("P1", 0, 1));
+      c.addEffect(new Poison("P2", 0, 1));
+      c.addEffect(new Poison("P3", 1, 1));
+
+      c.removeEffectsIfNeeded();
+
+      expectEquals("remaining effects size", 1, c.getStatusEffects().size());
+      expectEquals("remaining effect name", "P3", c.getStatusEffects().getFirst().getName());
+    });
+
     System.out.println();
     System.out.println("=== Summary ===");
     System.out.println("Passed: " + passed);
@@ -135,6 +148,12 @@ public final class CharacterStep2Test {
 
   private static void expectEquals(String label, double expected, double actual) {
     if (expected != actual) {
+      throw new AssertionError(label + " expected " + expected + " but was " + actual);
+    }
+  }
+
+  private static void expectEquals(String label, Object expected, Object actual) {
+    if (expected == null ? actual != null : !expected.equals(actual)) {
       throw new AssertionError(label + " expected " + expected + " but was " + actual);
     }
   }
