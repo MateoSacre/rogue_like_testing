@@ -40,9 +40,19 @@ public final class CharacterStep3Test {
       h.addXp(0);
       h.addXp(-100);
 
+      expectEquals("xp", 0, h.getXp());
       expectEquals("attack", atk0, h.getAttackPower());
       expectEquals("defence", def0, h.getDefence());
       expectEquals("maxHp", max0, h.getMaxHp());
+    });
+
+    test("addXp(negative) does not change stored xp after progress already exists", () -> {
+      Hero h = new Hero("H", 20, 5, 5);
+
+      h.addXp(40);
+      h.addXp(-100);
+
+      expectEquals("xp", 40, h.getXp());
     });
 
     test("xp=25 => sqrt=5 => level=round(0.5)=1 => attack+1, maxHp+2", () -> {

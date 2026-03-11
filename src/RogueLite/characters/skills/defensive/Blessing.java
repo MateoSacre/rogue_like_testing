@@ -69,7 +69,7 @@ public class Blessing implements Skill {
                         .noneMatch(s -> s.getName().equals(getName())))
             .toList()) {
       if (protection != null && duration != null) {
-        target.addEffect(new Blessed(name, protection, duration));
+        target.addEffect(new Blessed(name, duration, protection));
       } else {
         target.addEffect(new Blessed());
       }

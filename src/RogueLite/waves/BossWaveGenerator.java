@@ -34,6 +34,7 @@ public class BossWaveGenerator {
       Mob newMob = selectRandomMobInValue(index, currentWaveValue, totalValue);
       wave.add(newMob);
       currentWaveValue += newMob.getValue();
+      index++;
     }
     return new MobTeam("Wave", List.copyOf(wave));
   }

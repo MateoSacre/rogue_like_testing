@@ -1,4 +1,4 @@
-package RogueLite.characters.skills.defensive;
+package RogueLite.characters.skills.offensive;
 
 import RogueLite.characters.Character;
 import RogueLite.characters.skills.Skill;

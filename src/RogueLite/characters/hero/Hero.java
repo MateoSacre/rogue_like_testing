@@ -9,6 +9,10 @@ public class Hero extends Character {
   int xp = 0;
 
   public void addXp(int xp) {
+    if (xp < 0) {
+      System.out.println("Negative xp, not doing anything");
+      return;
+    }
     int nextLevelXpCap = getXpCap();
     int totalXp = this.xp + xp;
     if (totalXp >= nextLevelXpCap) {
@@ -26,7 +30,7 @@ public class Hero extends Character {
   }
 
   public int getXpCap() {
-    return Math.toIntExact(Math.round(Math.pow(100, 1 + ((double) (level)/10))));
+    return Math.toIntExact(Math.round(Math.pow(100, 1 + ((double) (level) / 10))));
   }
 
   public Hero(String name) {
@@ -64,7 +68,7 @@ public class Hero extends Character {
 
   @Override
   public double getDefence() {
-    return super.getDefence()  + getLevel() / 4;
+    return super.getDefence() + getLevel() / 4;
   }
 
   @Override
@@ -74,20 +78,19 @@ public class Hero extends Character {
 
   @Override
   public double attack(Character target, double modifier) {
-    double damages = super.attack(target,modifier);
-    if(!target.isAlive()){
-      addXp((int) Math.round(target.getMaxHp()/4));
+    double damages = super.attack(target, modifier);
+    if (!target.isAlive()) {
+      addXp((int) Math.round(target.getMaxHp() / 4));
     }
     return damages;
   }
-
 
   @Override
   public String toString() {
     return "[Name="
         + name
         + ", LVL="
-        + (getLevel()+1)
+        + (getLevel() + 1)
         + ", XP="
         + getXp()
         + "/"

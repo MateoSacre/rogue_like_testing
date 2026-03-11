@@ -4,30 +4,32 @@ import RogueLite.battle.Battle;
 import RogueLite.characters.hero.Hero;
 import RogueLite.characters.skills.TargetType;
 import RogueLite.characters.skills.defensive.Blessing;
-import RogueLite.characters.skills.defensive.PoisonArrow;
 import RogueLite.characters.skills.healing.SimpleHeal;
 import RogueLite.characters.skills.offensive.Cut;
 import RogueLite.characters.skills.offensive.Explosion;
+import RogueLite.characters.skills.offensive.PoisonArrow;
 import RogueLite.characters.skills.offensive.PowerStrike;
 import RogueLite.teams.HeroTeam;
 import RogueLite.teams.Team;
 import RogueLite.waves.BossWaveGenerator;
 import RogueLite.waves.SimpleWaveGenerator;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public class Game {
 
   public static void main(String[] args) {
     HeroTeam baseTeam = getBaseTeam();
+    long seed = OffsetDateTime.now().toEpochSecond();
     int waveCounter = 1;
     while (!baseTeam.isDefeated()) {
       System.out.println("-- Wave " + waveCounter + " --");
       int waveValue = getWaveValue(waveCounter);
       Team wave;
       if (waveCounter % 10 == 0) {
-        wave = new BossWaveGenerator().generateWave(waveValue);
+        wave = new BossWaveGenerator(seed).generateWave(waveValue);
       } else {
-        wave = new SimpleWaveGenerator().generateWave(waveValue);
+        wave = new SimpleWaveGenerator(seed).generateWave(waveValue);
       }
       Battle.fight(baseTeam, wave);
       baseTeam
@@ -35,10 +37,9 @@ public class Game {
           .forEach(
               h -> {
                 h.addXp(100);
-                h.heal(h.getMaxHp() / 4);
+                h.heal(h.getMaxHp());
               });
       waveCounter++;
-      waveValue++;
     }
   }
 

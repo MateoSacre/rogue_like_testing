@@ -1,4 +1,4 @@
-package RogueLite.characters.test;
+package RogueLite.characters.skills.test;
 
 import RogueLite.characters.Character;
 import RogueLite.characters.skills.Skill;

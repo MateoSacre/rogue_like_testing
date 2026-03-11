@@ -217,6 +217,9 @@ public class Character {
       StatusEffect effect = statusEffects.get(i);
       effect.removeEffect(this);
       statusEffects.remove(effect);
+      for (int j = i; j < effectToRemove.size(); j++){
+        effectToRemove.set(j,effectToRemove.get(j)-1);
+      }
     }
   }
 
