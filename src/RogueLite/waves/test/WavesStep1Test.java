@@ -24,9 +24,9 @@ public final class WavesStep1Test {
       expectThrows(RuntimeException.class, () -> new SimpleWaveGenerator().generateWave(-1));
     });
 
-    test("SimpleWaveGenerator: total value of generated wave equals requested totalValue", () -> {
+    test("SimpleWaveGenerator: total value of generated wave stays within requested totalValue", () -> {
       Team wave = new SimpleWaveGenerator().generateWave(10);
-      expectEquals("sum values", 10, sumValues(wave));
+      expectTrue("sum values <= total", sumValues(wave) <= 10);
     });
 
     test("SimpleWaveGenerator: contains no boss mobs", () -> {
@@ -39,9 +39,9 @@ public final class WavesStep1Test {
       expectTrue("containsBoss", containsBoss(wave));
     });
 
-    test("BossWaveGenerator: total value equals requested totalValue", () -> {
+    test("BossWaveGenerator: total value stays within requested totalValue", () -> {
       Team wave = new BossWaveGenerator().generateWave(15);
-      expectEquals("sum values", 15, sumValues(wave));
+      expectTrue("sum values <= total", sumValues(wave) <= 15);
     });
 
     System.out.println();

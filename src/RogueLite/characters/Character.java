@@ -7,9 +7,12 @@ import RogueLite.statuseffect.EffectType;
 import RogueLite.statuseffect.StatusEffect;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 public class Character {
+
+  private static final Random random = new Random();
 
   private static final int DEFAULT_MAX_HP = 20;
   private static final int DEFAULT_ATTACK_POWER = 3;
@@ -173,6 +176,10 @@ public class Character {
     }
     if (!target.isAlive() || !this.isAlive()) {
       return 0;
+    }
+    if(random.nextInt() % 10 == 0){
+      modifier *= 1.5;
+      System.out.println("Critical hit!");
     }
     return target.takeDamage(computeDamageAgainst(target, modifier));
   }

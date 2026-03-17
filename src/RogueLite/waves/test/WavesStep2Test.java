@@ -1,5 +1,6 @@
 package RogueLite.waves.test;
 
+import RogueLite.characters.mobs.MobsDictionary;
 import RogueLite.teams.Team;
 import RogueLite.waves.BossWaveGenerator;
 import RogueLite.waves.SimpleWaveGenerator;
@@ -56,13 +57,27 @@ public final class WavesStep2Test {
       }
     });
 
-    test("generated wave always matches requested totalValue", () -> {
+    test("generated wave stays within the budget and stops only at six mobs or when nothing fits", () -> {
       var gen = new SimpleWaveGenerator(42L);
 
       for (int total = 1; total <= 30; total++) {
         Team wave = gen.generateWave(total);
-        expectEquals("sum values for total=" + total, total, sumValues(wave));
+        int sum = sumValues(wave);
+        expectTrue("sum stays within total for total=" + total, sum <= total);
+        expectTrue("wave is non-empty for total=" + total, wave.size() > 0);
+        expectTrue("wave size <= 6 for total=" + total, wave.size() <= 6);
+        expectTrue(
+            "wave stops for a valid reason for total=" + total,
+            sum == total || wave.size() == 6 || total - sum < lowestNonBossValue());
       }
+    });
+
+    test("generated waves never exceed six mobs", () -> {
+      Team simpleWave = new SimpleWaveGenerator(42L).generateWave(30);
+      Team bossWave = new BossWaveGenerator(42L).generateWave(30);
+
+      expectTrue("simple wave size <= 6", simpleWave.size() <= 6);
+      expectTrue("boss wave size <= 6", bossWave.size() <= 6);
     });
 
     test("boss generator should contain at least one boss when totalValue allows it", () -> {
@@ -113,6 +128,14 @@ public final class WavesStep2Test {
       }
     }
     return false;
+  }
+
+  private static int lowestNonBossValue() {
+    return MobsDictionary.mobs.stream()
+        .filter(m -> !m.isBoss())
+        .mapToInt(Mob::getValue)
+        .min()
+        .orElseThrow();
   }
 
   private static void test(String name, Runnable body) {

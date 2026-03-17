@@ -21,8 +21,11 @@ public class Hero extends Character {
     if (totalXp >= nextLevelXpCap) {
       long xpToReport = totalXp - nextLevelXpCap;
       this.level++;
+      System.out.println(this.name + " reached level " + (this.level + 1));
       this.xp = 0;
-      this.hp = getMaxHp();
+      if (this.heal(getMaxHp()) > 0) {
+        System.out.println(this.name + " fully healed");
+      }
       addXp(xpToReport);
     } else {
       this.xp += xp;
@@ -91,7 +94,7 @@ public class Hero extends Character {
   public double attack(Character target, double modifier) {
     double damages = super.attack(target, modifier);
     if (!target.isAlive() && target instanceof Mob) {
-      addXp(((Mob) target).getValue());
+      addXp(Math.ceilDiv(((Mob) target).getValue(), 3));
     }
     return damages;
   }

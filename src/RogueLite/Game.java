@@ -26,7 +26,7 @@ public class Game {
     int waveCounter = 1;
     while (!baseTeam.isDefeated()) {
       System.out.println("-- Wave " + waveCounter + " --");
-      int waveValue = getWaveValue(waveCounter);
+      int waveValue = waveCounter;
       Team wave;
       if (waveCounter % 10 == 0) {
         BossWaveGenerator waveGenerator =
@@ -38,22 +38,18 @@ public class Game {
         wave = waveGenerator.generateWave(waveValue);
       }
       Battle.fight(baseTeam, wave);
-      baseTeam
-          .getAliveMembers()
-          .forEach(
-              h -> {
-                h.addXp(100);
-                h.heal(h.getMaxHp() / 10);
-              });
+      if (!baseTeam.isDefeated()) {
+        int waveXp = Math.floorDiv((waveCounter * 10), baseTeam.getAliveMembers().size());
+        baseTeam
+            .getAliveMembers()
+            .forEach(
+                h -> {
+                  h.addXp(waveXp);
+                  h.heal(h.getMaxHp() / 10);
+                });
+      }
       waveCounter++;
     }
-  }
-
-  private static int getWaveValue(int waveCounter) {
-    if (waveCounter <= 6) {
-      return 6;
-    }
-    return waveCounter;
   }
 
   private static HeroTeam getBaseTeam() {
@@ -67,7 +63,7 @@ public class Game {
                 7,
                 new Blessing(TargetType.ALLY_SINGLE_LOWEST_HP, "Protect", 3, 10, 3)),
             new Hero(
-                "Hero", 20, 5, 5, new PowerStrike(TargetType.ENNEMY_SINGLE, "Triple slash", 3, 3)),
+                "Hero", 20, 5, 5, new PowerStrike(TargetType.ENNEMY_SINGLE, "Power slash", 3, 3)),
             new Hero(
                 "Warrior",
                 15,
@@ -79,7 +75,7 @@ public class Game {
                 10,
                 10,
                 5,
-                new Explosion(TargetType.ENNEMY_TEAM, "Nuke", 10, null, 10D, true)),
+                new Explosion(TargetType.ENNEMY_TEAM, "Nuke", 10, null, 3D, true)),
             new Hero(
                 "Archer",
                 15,
@@ -97,6 +93,6 @@ public class Game {
                 15,
                 8,
                 2,
-                new Explosion(TargetType.ENNEMY_MULTI_TARGET, "Triple Beam", 5, 3, 16D, true))));
+                new Explosion(TargetType.ENNEMY_MULTI_TARGET, "Triple Beam", 5, 3, 16D, false))));
   }
 }

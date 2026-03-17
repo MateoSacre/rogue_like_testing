@@ -5,6 +5,7 @@ import RogueLite.teams.Team;
 import RogueLite.characters.mobs.Mob;
 import RogueLite.characters.mobs.MobsDictionary;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -27,35 +28,67 @@ public class BossWaveGenerator {
   }
 
   public Team generateWave(int totalValue) {
-    int currentWaveValue = 0;
     int index = 1;
+    int remainingValue = totalValue;
+    int remainingSlots = SimpleWaveGenerator.MAX_WAVE_SIZE;
     List<Mob> wave = new ArrayList<>();
-    while (currentWaveValue < totalValue) {
-      Mob newMob = selectRandomMobInValue(index, currentWaveValue, totalValue);
+    boolean bossAdded = false;
+
+    while (remainingValue > 0 && remainingSlots > 0) {
+      Mob newMob = selectMobForRemainingValue(index, remainingValue, remainingSlots, bossAdded);
+      if (newMob == null) {
+        break;
+      }
       wave.add(newMob);
-      currentWaveValue += newMob.getValue();
+      remainingValue -= newMob.getValue();
+      remainingSlots--;
+      bossAdded = bossAdded || newMob.isBoss();
       index++;
     }
     return new MobTeam("Wave", List.copyOf(wave));
   }
 
-  protected Mob selectRandomMobInValue(int index, int currentWaveValue, int totalValue) {
-    List<Mob> potentialMobs;
-    if (totalValue % 100 == 0) {
-      potentialMobs =
-          MobsDictionary.mobs.stream().filter(m -> m.getValue() == 100 && m.isBoss()).toList();
-    } else {
-      potentialMobs =
-          MobsDictionary.mobs.stream()
-              .filter(m -> m.getValue() + currentWaveValue <= totalValue && m.isBoss())
-              .toList();
+  protected Mob selectMobForRemainingValue(
+      int index, int remainingValue, int remainingSlots, boolean bossAdded) {
+    Mob selectedMob = null;
+
+    if (!bossAdded) {
+      selectedMob = findBossForRemainingValue(remainingValue, remainingSlots);
     }
-    if (potentialMobs.isEmpty()) {
-      return new SimpleWaveGenerator(random)
-          .selectRandomMobInValue(index, currentWaveValue, totalValue);
+    if (selectedMob == null) {
+      selectedMob =
+          new SimpleWaveGenerator(random)
+              .findClosestMobWithinShare(remainingValue,false);
     }
-    Mob mob = new Mob(potentialMobs.get(random.nextInt(potentialMobs.size())));
+    if (selectedMob == null) {
+      return null;
+    }
+
+    Mob mob = new Mob(selectedMob);
     mob.setName(index + "-" + mob.getName());
     return mob;
+  }
+
+  private Mob findBossForRemainingValue(int remainingValue, int remainingSlots) {
+    double targetValue = (double) remainingValue / remainingSlots;
+    double minimumTargetValue = targetValue / 4.0;
+
+    List<Mob> bossesWithinTargetWindow =
+        MobsDictionary.mobs.stream()
+            .filter(Mob::isBoss)
+            .filter(m -> m.getValue() <= remainingValue)
+            .filter(m -> m.getValue() <= targetValue)
+            .filter(m -> m.getValue() >= minimumTargetValue)
+            .toList();
+
+    if (!bossesWithinTargetWindow.isEmpty()) {
+      return bossesWithinTargetWindow.get(random.nextInt(bossesWithinTargetWindow.size()));
+    }
+
+    return MobsDictionary.mobs.stream()
+        .filter(Mob::isBoss)
+        .filter(m -> m.getValue() <= remainingValue)
+        .min(Comparator.comparingInt(Mob::getValue))
+        .orElse(null);
   }
 }

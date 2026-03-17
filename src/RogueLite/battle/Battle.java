@@ -109,6 +109,9 @@ public class Battle {
         return List.of(Objects.requireNonNull(pickFirstAliveExcluding(attacker, c)));
 
       case ALLY_SINGLE_LOWEST_HP:
+        if (attacker.getAliveMembers().size() == 1) {
+          return List.of(attacker.pickFirstAlive());
+        }
         return List.of(
             Objects.requireNonNull(
                 attacker.getAliveMembers().stream()

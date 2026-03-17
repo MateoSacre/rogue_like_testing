@@ -5,12 +5,14 @@ import RogueLite.teams.Team;
 import RogueLite.characters.mobs.Mob;
 import RogueLite.characters.mobs.MobsDictionary;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
 public class SimpleWaveGenerator {
 
   private static final long DEFAULT_SEED = 0L;
+  protected static final int MAX_WAVE_SIZE = 6;
 
   protected final Random random;
 
@@ -27,47 +29,54 @@ public class SimpleWaveGenerator {
   }
 
   public Team generateWave(int totalValue) {
-    int currentWaveValue = 0;
     int index = 1;
+    int remainingValue = totalValue;
+    int remainingSlots = MAX_WAVE_SIZE;
     List<Mob> wave = new ArrayList<>();
-    while (currentWaveValue < totalValue) {
-      Mob newMob = selectRandomMobInValue(index, currentWaveValue, totalValue);
+    while (remainingValue > 0 && remainingSlots > 0) {
+      Mob newMob = selectMobForRemainingValue(index, remainingValue);
+      if (newMob == null) {
+        break;
+      }
       wave.add(newMob);
-      currentWaveValue += newMob.getValue();
+      remainingValue -= newMob.getValue();
+      remainingSlots--;
       index++;
     }
     return new MobTeam("Wave", List.copyOf(wave));
   }
 
-  protected Mob selectRandomMobInValue(int index, int currentWaveValue, int totalValue) {
-    int minValue = Math.max(1, totalValue / 10);
-
-    List<Mob> strictMobs =
-        MobsDictionary.mobs.stream()
-            .filter(m -> m.getValue() + currentWaveValue <= totalValue)
-            .filter(m -> m.getValue() >= minValue)
-            .filter(m -> !m.isBoss() || (m.getValue() <= totalValue / 5))
-            .toList();
-
-    List<Mob> pool = strictMobs;
-
-    if (pool.isEmpty()) {
-      pool =
-          MobsDictionary.mobs.stream()
-              .filter(m -> m.getValue() + currentWaveValue <= totalValue)
-              .filter(m -> !m.isBoss() || (m.getValue() <= totalValue / 2))
-              .toList();
+  protected Mob selectMobForRemainingValue(int index, int remainingValue) {
+    Mob selectedMob = findClosestMobWithinShare(remainingValue, false);
+    if (selectedMob == null) {
+      return null;
     }
-
-    if (pool.isEmpty()) {
-      throw new IllegalStateException(
-          "No mobs can fit in remaining budget. currentWaveValue=" + currentWaveValue
-              + ", totalValue=" + totalValue);
-    }
-
-    Mob mob = new Mob(pool.get(random.nextInt(pool.size())));
+    Mob mob = new Mob(selectedMob);
     mob.setName(index + "-" + mob.getName());
     return mob;
+  }
+
+  protected Mob findClosestMobWithinShare(
+      int remainingValue, boolean bossesAllowed) {
+    double minimumTargetValue = remainingValue / 4.0;
+
+    List<Mob> mobsWithinTargetWindow =
+        MobsDictionary.mobs.stream()
+            .filter(m -> m.getValue() <= remainingValue)
+            .filter(m -> bossesAllowed || !m.isBoss() || (m.isBoss() && m.getValue() <= remainingValue/4))
+            .filter(m -> m.getValue() <= remainingValue)
+            .filter(m -> m.getValue() >= minimumTargetValue)
+            .toList();
+
+    if (!mobsWithinTargetWindow.isEmpty()) {
+      return mobsWithinTargetWindow.get(random.nextInt(mobsWithinTargetWindow.size()));
+    }
+
+    return MobsDictionary.mobs.stream()
+        .filter(m -> m.getValue() <= remainingValue)
+        .filter(m -> bossesAllowed || !m.isBoss() || (m.isBoss() && m.getValue() <= remainingValue/4))
+        .min(Comparator.comparingInt(Mob::getValue))
+        .orElse(null);
   }
 
 }
