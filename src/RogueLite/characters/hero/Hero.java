@@ -1,36 +1,47 @@
 package RogueLite.characters.hero;
 
 import RogueLite.characters.Character;
+import RogueLite.characters.mobs.Mob;
 import RogueLite.characters.skills.Skill;
 
 public class Hero extends Character {
 
-  int level = 0;
-  int xp = 0;
+  static final double XP_SLOPE_MODIFIER = .00001;
 
-  public void addXp(int xp) {
+  int level = 0;
+  long xp = 0;
+
+  public void addXp(long xp) {
     if (xp < 0) {
       System.out.println("Negative xp, not doing anything");
       return;
     }
-    int nextLevelXpCap = getXpCap();
-    int totalXp = this.xp + xp;
+    long nextLevelXpCap = getXpCap(level);
+    long totalXp = this.xp + xp;
     if (totalXp >= nextLevelXpCap) {
-      int xpToReport = totalXp - nextLevelXpCap;
+      long xpToReport = totalXp - nextLevelXpCap;
       this.level++;
       this.xp = 0;
+      this.hp = getMaxHp();
       addXp(xpToReport);
     } else {
       this.xp += xp;
     }
   }
 
-  public int getXp() {
-    return xp;
+  public long getXpCap(int level) {
+    long xpCap = 100; // cap pour passer du niveau 0 au niveau 1
+
+    for (int i = 0; i < level; i++) {
+      double multiplier = 1.02 + 0.48 * Math.exp(-XP_SLOPE_MODIFIER * i);
+      xpCap = Math.round(xpCap * multiplier);
+    }
+
+    return xpCap;
   }
 
-  public int getXpCap() {
-    return Math.toIntExact(Math.round(Math.pow(100, 1 + ((double) (level) / 10))));
+  public long getXp() {
+    return xp;
   }
 
   public Hero(String name) {
@@ -79,8 +90,8 @@ public class Hero extends Character {
   @Override
   public double attack(Character target, double modifier) {
     double damages = super.attack(target, modifier);
-    if (!target.isAlive()) {
-      addXp((int) Math.round(target.getMaxHp() / 4));
+    if (!target.isAlive() && target instanceof Mob) {
+      addXp(((Mob) target).getValue());
     }
     return damages;
   }
@@ -94,7 +105,7 @@ public class Hero extends Character {
         + ", XP="
         + getXp()
         + "/"
-        + getXpCap()
+        + getXpCap(level)
         + ", DEF="
         + getDefence()
         + ", ATK"

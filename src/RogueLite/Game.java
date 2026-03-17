@@ -19,17 +19,23 @@ import java.util.List;
 public class Game {
 
   public static void main(String[] args) {
+    final boolean IS_TEST_MODE = false;
+    final long seed = OffsetDateTime.now().toEpochSecond();
+
     HeroTeam baseTeam = getBaseTeam();
-    long seed = OffsetDateTime.now().toEpochSecond();
     int waveCounter = 1;
     while (!baseTeam.isDefeated()) {
       System.out.println("-- Wave " + waveCounter + " --");
       int waveValue = getWaveValue(waveCounter);
       Team wave;
       if (waveCounter % 10 == 0) {
-        wave = new BossWaveGenerator(seed).generateWave(waveValue);
+        BossWaveGenerator waveGenerator =
+            IS_TEST_MODE ? new BossWaveGenerator() : new BossWaveGenerator(seed);
+        wave = waveGenerator.generateWave(waveValue);
       } else {
-        wave = new SimpleWaveGenerator(seed).generateWave(waveValue);
+        SimpleWaveGenerator waveGenerator =
+            IS_TEST_MODE ? new SimpleWaveGenerator() : new SimpleWaveGenerator(seed);
+        wave = waveGenerator.generateWave(waveValue);
       }
       Battle.fight(baseTeam, wave);
       baseTeam
@@ -37,7 +43,7 @@ public class Game {
           .forEach(
               h -> {
                 h.addXp(100);
-                h.heal(h.getMaxHp());
+                h.heal(h.getMaxHp() / 10);
               });
       waveCounter++;
     }
@@ -68,6 +74,12 @@ public class Game {
                 7,
                 3,
                 new Cut(TargetType.ENNEMY_SINGLE_HIGHEST_HP, "Deep cut", 4, 5, 5)),
+            new Hero(
+                "Artificier",
+                10,
+                10,
+                5,
+                new Explosion(TargetType.ENNEMY_TEAM, "Nuke", 10, null, 10D, true)),
             new Hero(
                 "Archer",
                 15,
