@@ -89,6 +89,14 @@ public final class WavesStep2Test {
       expectTrue("contains boss", containsBoss(wave));
     });
 
+    test("generated mobs always receive an AI profile", () -> {
+      Team wave = new ThemedWaveGenerator(42L).generateWave(50);
+      expectTrue(
+          "all mobs have ai",
+          wave.getMembers().stream()
+              .allMatch(member -> member instanceof Mob mob && mob.getAiType() != null));
+    });
+
     test("themed generator keeps the same faction for five consecutive waves", () -> {
       var gen = new ThemedWaveGenerator(42L);
 

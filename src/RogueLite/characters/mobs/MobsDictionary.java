@@ -1,5 +1,6 @@
 package RogueLite.characters.mobs;
 
+import RogueLite.Debug;
 import RogueLite.characters.skills.Skill;
 import RogueLite.characters.skills.TargetType;
 import RogueLite.characters.skills.defensive.Blessing;
@@ -56,6 +57,7 @@ public class MobsDictionary {
 
   private static void validateFactionRoster(MobCategory category) {
     List<Mob> roster = getMobsByCategory(category);
+    Debug.log("MobsDictionary", "Validating category=" + category + " size=" + roster.size());
     requireTierCount(category, roster, MobTier.ELITE, 3);
     requireTierCount(category, roster, MobTier.LATE, 3);
     requireTierCount(category, roster, MobTier.APEX, 2);

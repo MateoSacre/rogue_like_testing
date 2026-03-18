@@ -18,4 +18,19 @@ public interface Skill {
   void use(Character caster, List<Character> targets);
 
   Skill newInstance();
+
+  default boolean appliesNegativeEffect() {
+    return false;
+  }
+
+  default boolean targetsEnemies() {
+    return switch (getTargetType()) {
+      case ENNEMY_SINGLE,
+          ENNEMY_SINGLE_LOWEST_HP,
+          ENNEMY_SINGLE_HIGHEST_HP,
+          ENNEMY_MULTI_TARGET,
+          ENNEMY_TEAM -> true;
+      default -> false;
+    };
+  }
 }

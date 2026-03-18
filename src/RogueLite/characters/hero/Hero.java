@@ -82,7 +82,7 @@ public class Hero extends Character {
 
   @Override
   public double getDefence() {
-    return super.getDefence() + getLevel() / 4;
+    return super.getDefence() + Math.floorDiv(getLevel(), 4);
   }
 
   @Override

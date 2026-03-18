@@ -1,6 +1,9 @@
 package RogueLite.battle;
 
+import RogueLite.Debug;
 import RogueLite.characters.Character;
+import RogueLite.characters.mobs.Mob;
+import RogueLite.characters.mobs.MobAiType;
 import RogueLite.characters.skills.TargetType;
 import RogueLite.statuseffect.EffectActivation;
 import RogueLite.statuseffect.EffectType;
@@ -10,9 +13,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.Random;
 
 public class Battle {
+
+  private static final Random random = new Random();
 
   public static Team fight(Team team1, Team team2) {
     if (team1 == (null) || team2 == (null)) {
@@ -66,10 +71,16 @@ public class Battle {
 
       applyEffectsOnTurnStart(c);
 
-      Character target = defender.pickFirstAlive();
+      Character target = pickAttackTarget(c, defender);
+      if (c instanceof Mob mob) {
+        Debug.log("Battle", mob.getName() + " basic target=" + target.getName() + " ai=" + mob.getAiType());
+      }
 
       if (c.canUseSkill()) {
         List<Character> targets = getTargetsForSkill(c, attacker, defender);
+        if (c instanceof Mob mob) {
+          Debug.log("Battle", mob.getName() + " skill targets=" + targets.stream().map(Character::getName).toList() + " ai=" + mob.getAiType());
+        }
         if (c.getSkill().shouldUse(c, targets)) {
           c.useSkill(targets);
           c.initiateSkillCooldown();
@@ -79,8 +90,13 @@ public class Battle {
       }
 
       double damages = c.attack(target);
-      System.out.println(
-          c.getName() + " attacks " + target.getName() + " for " + damages + " dmg " + target);
+      if(c instanceof Mob){
+        System.out.println(
+            c.getName() + "["+((Mob) c).getAiType()+"]" + " attacks " + target.getName() + " for " + damages + " dmg " + target);
+      }else{
+        System.out.println(
+            c.getName() + " attacks " + target.getName() + " for " + damages + " dmg " + target);
+      }
       c.applySkillCooldown();
     }
   }
@@ -101,6 +117,10 @@ public class Battle {
 
   private static List<Character> getTargetsForSkill(
       Character c, Team<? extends Character> attacker, Team<? extends Character> defender) {
+    if (c instanceof Mob mob && c.getSkill().targetsEnemies()) {
+      return getEnemyTargetsForMobSkill(mob, defender);
+    }
+
     switch (c.getSkill().getTargetType()) {
       case SELF:
         return List.of(c);
@@ -178,5 +198,85 @@ public class Battle {
       }
     }
     return null;
+  }
+
+  private static Character pickAttackTarget(
+      Character attacker, Team<? extends Character> defender) {
+    if (attacker instanceof Mob mob) {
+      return pickEnemyTargetsByAi(mob, defender.getAliveMembers(), 1).getFirst();
+    }
+    return defender.pickFirstAlive();
+  }
+
+  private static List<Character> getEnemyTargetsForMobSkill(
+      Mob mob, Team<? extends Character> defender) {
+    List<? extends Character> aliveDefenders = defender.getAliveMembers();
+    return switch (mob.getSkill().getTargetType()) {
+      case ENNEMY_SINGLE,
+          ENNEMY_SINGLE_LOWEST_HP,
+          ENNEMY_SINGLE_HIGHEST_HP -> pickEnemyTargetsByAi(mob, aliveDefenders, 1);
+      case ENNEMY_MULTI_TARGET, ENNEMY_TEAM -> pickEnemyTargetsByAi(mob, aliveDefenders, aliveDefenders.size());
+      default -> throw new IllegalArgumentException(
+          "Mob AI cannot handle target type " + mob.getSkill().getTargetType());
+    };
+  }
+
+  private static List<Character> pickEnemyTargetsByAi(
+      Mob attacker, List<? extends Character> candidates, int maximumTargets) {
+    List<Character> orderedTargets = new ArrayList<>(candidates);
+    if (orderedTargets.isEmpty()) {
+      return List.of();
+    }
+
+    switch (attacker.getAiType()) {
+      case DUMB -> {
+        // Keep battle order.
+      }
+      case RANDOM -> {
+        List<Character> shuffledTargets = new ArrayList<>();
+        while (!orderedTargets.isEmpty()) {
+          shuffledTargets.add(orderedTargets.remove(random.nextInt(orderedTargets.size())));
+        }
+        orderedTargets = shuffledTargets;
+      }
+      case KILLER ->
+          orderedTargets.sort(Comparator.comparingDouble(target -> target.getHp() / target.getMaxHp()));
+      case DAMAGER -> orderedTargets.sort(Comparator.comparingDouble(Character::getDefence));
+      case EFFECT_DEALER ->
+          orderedTargets = prioritizeByEffectPresence(orderedTargets, false);
+      case EFFECT_STACKER ->
+          orderedTargets = prioritizeByEffectPresence(orderedTargets, true);
+      default -> throw new IllegalArgumentException("Unknown AI type " + attacker.getAiType());
+    }
+
+    Debug.log(
+        "Battle",
+        attacker.getName() + " ai=" + attacker.getAiType() + " ordered targets="
+            + orderedTargets.stream().map(Character::getName).toList());
+
+    return List.copyOf(orderedTargets.subList(0, Math.min(maximumTargets, orderedTargets.size())));
+  }
+
+  private static List<Character> prioritizeByEffectPresence(
+      List<Character> orderedTargets, boolean shouldHaveEffect) {
+    List<Character> preferredTargets =
+        orderedTargets.stream()
+            .filter(target -> hasNegativeEffect(target) == shouldHaveEffect)
+            .sorted(Comparator.comparingDouble(target -> target.getHp() / target.getMaxHp()))
+            .toList();
+
+    List<Character> fallbackTargets =
+        orderedTargets.stream()
+            .filter(target -> hasNegativeEffect(target) != shouldHaveEffect)
+            .sorted(Comparator.comparingDouble(target -> target.getHp() / target.getMaxHp()))
+            .toList();
+
+    List<Character> prioritizedTargets = new ArrayList<>(preferredTargets);
+    prioritizedTargets.addAll(fallbackTargets);
+    return prioritizedTargets;
+  }
+
+  private static boolean hasNegativeEffect(Character target) {
+    return target.getStatusEffects().stream().anyMatch(effect -> effect.getType() == EffectType.RECURRENT);
   }
 }

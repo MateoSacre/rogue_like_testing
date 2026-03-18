@@ -2,7 +2,11 @@ package RogueLite.battle.test;
 
 import RogueLite.battle.Battle;
 import RogueLite.characters.hero.Hero;
+import RogueLite.characters.mobs.MobAiType;
 import RogueLite.characters.mobs.Mob;
+import RogueLite.characters.skills.TargetType;
+import RogueLite.characters.skills.offensive.PoisonArrow;
+import RogueLite.statuseffect.recurrent.Poison;
 import RogueLite.teams.HeroTeam;
 import RogueLite.teams.MobTeam;
 import RogueLite.teams.Team;
@@ -89,6 +93,67 @@ public final class BattleStep1Test {
 
       expectTrue("winner is B", winner == teamB);
       expectTrue("b1 still alive", b1.isAlive());
+    });
+
+    test("killer AI focuses the lowest health ratio target", () -> {
+      Hero lowHp = new Hero("LowHp", 10, 1, 0);
+      Hero healthy = new Hero("Healthy", 10, 100, 0);
+      lowHp.takeDamage(9);
+
+      Mob killer = new Mob("Killer", 1, 20, 0, 8);
+      killer.setAiType(MobAiType.KILLER);
+
+      Team monsters = new MobTeam("Monsters", List.of(killer));
+      Team heroes = new HeroTeam("Heroes", List.of(lowHp, healthy));
+
+      Battle.fight(monsters, heroes);
+
+      expectFalse("lowest hp ratio target dies first", lowHp.isAlive());
+      expectTrue("other target survives", healthy.isAlive());
+    });
+
+    test("damager AI focuses the lowest defence target", () -> {
+      Hero fragile = new Hero("Fragile", 10, 1, 0);
+      Hero tanky = new Hero("Tanky", 10, 100, 10);
+
+      Mob damager = new Mob("Damager", 1, 20, 0, 8);
+      damager.setAiType(MobAiType.DAMAGER);
+
+      Team monsters = new MobTeam("Monsters", List.of(damager));
+      Team heroes = new HeroTeam("Heroes", List.of(fragile, tanky));
+
+      Battle.fight(monsters, heroes);
+
+      expectFalse("lowest defence target dies first", fragile.isAlive());
+      expectTrue("higher defence target survives", tanky.isAlive());
+    });
+
+    test("effect dealer AI prefers an enemy with no negative effect for skill targeting", () -> {
+      Hero alreadyPoisoned = new Hero("Poisoned", 20, 1, 0);
+      alreadyPoisoned.addEffect(new Poison());
+
+      Mob dealer =
+          new Mob(
+              "Dealer",
+              1,
+              5,
+              0,
+              10,
+              new PoisonArrow(TargetType.ENNEMY_SINGLE, "Venom Shot", 3, 3, 2));
+      dealer.setAiType(MobAiType.EFFECT_DEALER);
+      for (int i = 0; i < 3; i++) {
+        dealer.applySkillCooldown();
+      }
+
+      Team monsters = new MobTeam("Monsters", List.of(dealer));
+      HeroTeam heroes = new HeroTeam("Heroes", List.of(alreadyPoisoned, new Hero("Clean", 20, 100, 0)));
+
+      Battle.fight(monsters, heroes);
+
+      expectTrue(
+          "clean target receives the new negative effect",
+          heroes.getMembers().get(1).getStatusEffects().stream()
+              .anyMatch(effect -> effect.getName().equals("Venom Shot")));
     });
 
     System.out.println();

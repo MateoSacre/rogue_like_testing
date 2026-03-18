@@ -85,4 +85,9 @@ public class PoisonArrow implements Skill {
   public Skill newInstance() {
     return new PoisonArrow(targetType, name, cooldownValue, poisonDuration, poisonDamage);
   }
+
+  @Override
+  public boolean appliesNegativeEffect() {
+    return true;
+  }
 }

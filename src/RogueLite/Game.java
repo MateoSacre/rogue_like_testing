@@ -20,17 +20,27 @@ public class Game {
   private static final int THEME_LENGTH = 5;
 
   public static void main(String[] args) {
-    final boolean IS_TEST_MODE = false;
     final long seed = OffsetDateTime.now().toEpochSecond();
+    Debug.log("Game", "Seed=" + seed);
 
     HeroTeam baseTeam = getBaseTeam();
     ThemedWaveGenerator waveGenerator =
-        IS_TEST_MODE ? new ThemedWaveGenerator() : new ThemedWaveGenerator(seed);
+        Debug.TEST_MODE ? new ThemedWaveGenerator() : new ThemedWaveGenerator(seed);
     int waveCounter = 1;
     while (!baseTeam.isDefeated()) {
       int themeWaveIndex = ((waveCounter - 1) % THEME_LENGTH) + 1;
-      int waveValue = waveCounter;
+      int waveValue = waveCounter+10;
       ThemedWave wave = waveGenerator.generateThemedWave(waveValue);
+      Debug.log(
+          "Game",
+          "Wave "
+              + waveCounter
+              + " value="
+              + waveValue
+              + " category="
+              + wave.category()
+              + " finalThemeWave="
+              + wave.finalWaveInTheme());
 
       System.out.println(
           "-- Wave "
@@ -45,17 +55,21 @@ public class Game {
 
       Battle.fight(baseTeam, wave.team());
       if (!baseTeam.isDefeated()) {
-        int waveXp = Math.floorDiv((waveCounter * 10), baseTeam.getAliveMembers().size());
+        int waveXp = Math.floorDiv((waveValue * 10), baseTeam.getAliveMembers().size());
         if (wave.finalWaveInTheme()) {
           waveXp *= 2;
         }
+        Debug.log(
+            "Game",
+            "Wave " + waveCounter + " rewards " + waveXp + " xp split across "
+                + baseTeam.getAliveMembers().size() + " heroes");
         final int earnedXp = waveXp;
         baseTeam
             .getAliveMembers()
             .forEach(
                 h -> {
                   h.addXp(earnedXp);
-                  h.heal(h.getMaxHp() / 10);
+                  h.heal(Math.floor(h.getMaxHp()/10));
                 });
       }
       waveCounter++;

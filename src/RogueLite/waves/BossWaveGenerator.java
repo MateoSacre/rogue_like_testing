@@ -1,8 +1,10 @@
 package RogueLite.waves;
 
+import RogueLite.Debug;
 import RogueLite.teams.MobTeam;
 import RogueLite.teams.Team;
 import RogueLite.characters.mobs.Mob;
+import RogueLite.characters.mobs.MobAiType;
 import RogueLite.characters.mobs.MobsDictionary;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,6 +30,7 @@ public class BossWaveGenerator {
   }
 
   public Team generateWave(int totalValue) {
+    Debug.log("BossWaveGenerator", "Generating boss wave with totalValue=" + totalValue);
     int index = 1;
     int remainingValue = totalValue;
     int remainingSlots = SimpleWaveGenerator.MAX_WAVE_SIZE;
@@ -37,9 +40,13 @@ public class BossWaveGenerator {
     while (remainingValue > 0 && remainingSlots > 0) {
       Mob newMob = selectMobForRemainingValue(index, remainingValue, remainingSlots, bossAdded);
       if (newMob == null) {
+        Debug.log("BossWaveGenerator", "Stopping generation: no valid mob for remainingValue=" + remainingValue);
         break;
       }
       wave.add(newMob);
+      Debug.log(
+          "BossWaveGenerator",
+          "Added mob " + newMob.getName() + " value=" + newMob.getValue() + " ai=" + newMob.getAiType());
       remainingValue -= newMob.getValue();
       remainingSlots--;
       bossAdded = bossAdded || newMob.isBoss();
@@ -66,6 +73,10 @@ public class BossWaveGenerator {
 
     Mob mob = new Mob(selectedMob);
     mob.setName(index + "-" + mob.getName());
+    mob.setAiType(MobAiType.randomFor(mob, random));
+    Debug.log(
+        "BossWaveGenerator",
+        "Selected template=" + selectedMob.getName() + " remainingValue=" + remainingValue + " ai=" + mob.getAiType());
     return mob;
   }
 

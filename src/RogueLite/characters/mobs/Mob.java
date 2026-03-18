@@ -8,11 +8,13 @@ public class Mob extends Character {
   private static final boolean IS_NOT_BOSS = false;
   private static final MobCategory DEFAULT_CATEGORY = MobCategory.MONSTERS;
   private static final MobTier DEFAULT_TIER = MobTier.EARLY;
+  private static final MobAiType DEFAULT_AI_TYPE = MobAiType.DUMB;
 
   private int value;
   private boolean isBoss;
   private MobCategory category;
   private MobTier tier;
+  private MobAiType aiType;
 
   public Mob(String name) {
     super(name);
@@ -20,6 +22,7 @@ public class Mob extends Character {
     this.isBoss = IS_NOT_BOSS;
     this.category = DEFAULT_CATEGORY;
     this.tier = DEFAULT_TIER;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(String name, int maxHp) {
@@ -28,6 +31,7 @@ public class Mob extends Character {
     this.isBoss = IS_NOT_BOSS;
     this.category = DEFAULT_CATEGORY;
     this.tier = DEFAULT_TIER;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(String name, int maxHp, int attackPower, int defence) {
@@ -36,6 +40,7 @@ public class Mob extends Character {
     this.isBoss = IS_NOT_BOSS;
     this.category = DEFAULT_CATEGORY;
     this.tier = DEFAULT_TIER;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(String name, int maxHp, int attackPower, int defence,int value) {
@@ -44,6 +49,7 @@ public class Mob extends Character {
     this.isBoss = IS_NOT_BOSS;
     this.category = DEFAULT_CATEGORY;
     this.tier = DEFAULT_TIER;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(String name, int maxHp, int attackPower, int defence,int value, Skill skill) {
@@ -52,6 +58,7 @@ public class Mob extends Character {
     this.isBoss = IS_NOT_BOSS;
     this.category = DEFAULT_CATEGORY;
     this.tier = DEFAULT_TIER;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(String name, int maxHp, int attackPower, int defence,boolean isBoss) {
@@ -60,6 +67,7 @@ public class Mob extends Character {
     this.isBoss = isBoss;
     this.category = DEFAULT_CATEGORY;
     this.tier = DEFAULT_TIER;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(String name, int maxHp, int attackPower, int defence,int value,boolean isBoss) {
@@ -68,6 +76,7 @@ public class Mob extends Character {
     this.isBoss = isBoss;
     this.category = DEFAULT_CATEGORY;
     this.tier = DEFAULT_TIER;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(
@@ -83,6 +92,7 @@ public class Mob extends Character {
     this.isBoss = IS_NOT_BOSS;
     this.category = category;
     this.tier = tier;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(
@@ -99,6 +109,7 @@ public class Mob extends Character {
     this.isBoss = IS_NOT_BOSS;
     this.category = category;
     this.tier = tier;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(
@@ -115,6 +126,7 @@ public class Mob extends Character {
     this.isBoss = isBoss;
     this.category = category;
     this.tier = tier;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(Character character) {
@@ -123,6 +135,7 @@ public class Mob extends Character {
     this.isBoss = IS_NOT_BOSS;
     this.category = DEFAULT_CATEGORY;
     this.tier = DEFAULT_TIER;
+    this.aiType = DEFAULT_AI_TYPE;
   }
 
   public Mob(Mob mob) {
@@ -131,6 +144,7 @@ public class Mob extends Character {
     this.isBoss = mob.isBoss();
     this.category = mob.getCategory();
     this.tier = mob.getTier();
+    this.aiType = mob.getAiType();
   }
 
   public int getValue() {
@@ -147,5 +161,31 @@ public class Mob extends Character {
 
   public MobTier getTier() {
     return tier;
+  }
+
+  public MobAiType getAiType() {
+    return aiType;
+  }
+
+  public void setAiType(MobAiType aiType) {
+    this.aiType = aiType;
+  }
+
+
+  @Override
+  public String toString() {
+    return "[Name="
+        + name
+        + ", AI="
+        + getAiType()
+        + ", DEF="
+        + getDefence()
+        + ", ATK"
+        + getAttackPower()
+        + ", HP="
+        + hp
+        + "/"
+        + getMaxHp()
+        + "]";
   }
 }

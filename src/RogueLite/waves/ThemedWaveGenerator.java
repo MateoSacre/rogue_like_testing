@@ -1,6 +1,8 @@
 package RogueLite.waves;
 
+import RogueLite.Debug;
 import RogueLite.characters.mobs.Mob;
+import RogueLite.characters.mobs.MobAiType;
 import RogueLite.characters.mobs.MobCategory;
 import RogueLite.characters.mobs.MobTier;
 import RogueLite.characters.mobs.MobsDictionary;
@@ -39,9 +41,14 @@ public class ThemedWaveGenerator extends SimpleWaveGenerator {
     if (wavesRemainingInTheme == 0) {
       currentCategory = pickRandomCategory();
       wavesRemainingInTheme = THEME_LENGTH;
+      Debug.log("ThemedWaveGenerator", "Starting new theme with category=" + currentCategory);
     }
 
     boolean isFinalWaveInTheme = wavesRemainingInTheme == 1;
+    Debug.log(
+        "ThemedWaveGenerator",
+        "Generating themed wave value=" + totalValue + " category=" + currentCategory
+            + " finalWave=" + isFinalWaveInTheme + " remainingInTheme=" + wavesRemainingInTheme);
     int index = 1;
     int remainingValue = totalValue;
     int remainingSlots = MAX_WAVE_SIZE;
@@ -51,6 +58,9 @@ public class ThemedWaveGenerator extends SimpleWaveGenerator {
       Mob hardMob = selectHardMob(index, totalValue, currentCategory);
       if (hardMob != null) {
         wave.add(hardMob);
+        Debug.log(
+            "ThemedWaveGenerator",
+            "Inserted hard mob " + hardMob.getName() + " value=" + hardMob.getValue() + " ai=" + hardMob.getAiType());
         remainingValue -= hardMob.getValue();
         remainingSlots--;
         index++;
@@ -60,15 +70,20 @@ public class ThemedWaveGenerator extends SimpleWaveGenerator {
     while (remainingValue > 0 && remainingSlots > 0) {
       Mob mob = selectFactionMob(index, remainingValue, currentCategory, false);
       if (mob == null) {
+        Debug.log("ThemedWaveGenerator", "Stopping generation: no valid mob for remainingValue=" + remainingValue);
         break;
       }
       wave.add(mob);
+      Debug.log(
+          "ThemedWaveGenerator",
+          "Added mob " + mob.getName() + " value=" + mob.getValue() + " ai=" + mob.getAiType());
       remainingValue -= mob.getValue();
       remainingSlots--;
       index++;
     }
 
     wavesRemainingInTheme--;
+    Debug.log("ThemedWaveGenerator", "Theme waves remaining after generation=" + wavesRemainingInTheme);
     return new ThemedWave(new MobTeam("Wave", List.copyOf(wave)), currentCategory, isFinalWaveInTheme);
   }
 
@@ -96,6 +111,10 @@ public class ThemedWaveGenerator extends SimpleWaveGenerator {
         Mob selected = candidates.get(random.nextInt(candidates.size()));
         Mob mob = new Mob(selected);
         mob.setName(index + "-" + mob.getName());
+        mob.setAiType(MobAiType.randomFor(mob, random));
+        Debug.log(
+            "ThemedWaveGenerator",
+            "Picked hard mob template=" + selected.getName() + " tier=" + tier + " ai=" + mob.getAiType());
         return mob;
       }
     }
@@ -140,6 +159,10 @@ public class ThemedWaveGenerator extends SimpleWaveGenerator {
     }
     Mob mob = new Mob(selected);
     mob.setName(index + "-" + mob.getName());
+    mob.setAiType(MobAiType.randomFor(mob, random));
+    Debug.log(
+        "ThemedWaveGenerator",
+        "Selected themed mob template=" + selected.getName() + " remainingValue=" + remainingValue + " ai=" + mob.getAiType());
     return mob;
   }
 

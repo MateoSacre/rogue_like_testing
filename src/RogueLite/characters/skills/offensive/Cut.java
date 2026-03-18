@@ -87,4 +87,9 @@ public class Cut implements Skill {
   public Skill newInstance() {
     return new Cut(targetType,name,cooldownValue,bleedDuration,bleedDamage);
   }
+
+  @Override
+  public boolean appliesNegativeEffect() {
+    return true;
+  }
 }
