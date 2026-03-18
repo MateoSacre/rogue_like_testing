@@ -10,41 +10,51 @@ import RogueLite.characters.skills.offensive.Explosion;
 import RogueLite.characters.skills.offensive.PoisonArrow;
 import RogueLite.characters.skills.offensive.PowerStrike;
 import RogueLite.teams.HeroTeam;
-import RogueLite.teams.Team;
-import RogueLite.waves.BossWaveGenerator;
-import RogueLite.waves.SimpleWaveGenerator;
+import RogueLite.waves.ThemedWave;
+import RogueLite.waves.ThemedWaveGenerator;
 import java.time.OffsetDateTime;
 import java.util.List;
 
 public class Game {
+
+  private static final int THEME_LENGTH = 5;
 
   public static void main(String[] args) {
     final boolean IS_TEST_MODE = false;
     final long seed = OffsetDateTime.now().toEpochSecond();
 
     HeroTeam baseTeam = getBaseTeam();
+    ThemedWaveGenerator waveGenerator =
+        IS_TEST_MODE ? new ThemedWaveGenerator() : new ThemedWaveGenerator(seed);
     int waveCounter = 1;
     while (!baseTeam.isDefeated()) {
-      System.out.println("-- Wave " + waveCounter + " --");
+      int themeWaveIndex = ((waveCounter - 1) % THEME_LENGTH) + 1;
       int waveValue = waveCounter;
-      Team wave;
-      if (waveCounter % 10 == 0) {
-        BossWaveGenerator waveGenerator =
-            IS_TEST_MODE ? new BossWaveGenerator() : new BossWaveGenerator(seed);
-        wave = waveGenerator.generateWave(waveValue);
-      } else {
-        SimpleWaveGenerator waveGenerator =
-            IS_TEST_MODE ? new SimpleWaveGenerator() : new SimpleWaveGenerator(seed);
-        wave = waveGenerator.generateWave(waveValue);
-      }
-      Battle.fight(baseTeam, wave);
+      ThemedWave wave = waveGenerator.generateThemedWave(waveValue);
+
+      System.out.println(
+          "-- Wave "
+              + waveCounter
+              + " ["
+              + wave.category()
+              + " "
+              + themeWaveIndex
+              + "/"
+              + THEME_LENGTH
+              + "] --");
+
+      Battle.fight(baseTeam, wave.team());
       if (!baseTeam.isDefeated()) {
         int waveXp = Math.floorDiv((waveCounter * 10), baseTeam.getAliveMembers().size());
+        if (wave.finalWaveInTheme()) {
+          waveXp *= 2;
+        }
+        final int earnedXp = waveXp;
         baseTeam
             .getAliveMembers()
             .forEach(
                 h -> {
-                  h.addXp(waveXp);
+                  h.addXp(earnedXp);
                   h.heal(h.getMaxHp() / 10);
                 });
       }

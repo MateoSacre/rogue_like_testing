@@ -1,9 +1,12 @@
 package RogueLite.waves.test;
 
+import RogueLite.characters.mobs.MobTier;
 import RogueLite.characters.mobs.MobsDictionary;
 import RogueLite.teams.Team;
 import RogueLite.waves.BossWaveGenerator;
 import RogueLite.waves.SimpleWaveGenerator;
+import RogueLite.waves.ThemedWave;
+import RogueLite.waves.ThemedWaveGenerator;
 import RogueLite.characters.mobs.Mob;
 
 public final class WavesStep2Test {
@@ -86,6 +89,32 @@ public final class WavesStep2Test {
       expectTrue("contains boss", containsBoss(wave));
     });
 
+    test("themed generator keeps the same faction for five consecutive waves", () -> {
+      var gen = new ThemedWaveGenerator(42L);
+
+      ThemedWave first = gen.generateThemedWave(20);
+      for (int i = 0; i < 3; i++) {
+        ThemedWave next = gen.generateThemedWave(20 + i);
+        expectEquals("same category for wave " + (i + 2), first.category().name(), next.category().name());
+        expectFalse("not final wave yet", next.finalWaveInTheme());
+      }
+
+      ThemedWave fifth = gen.generateThemedWave(24);
+      expectEquals("same category for fifth wave", first.category().name(), fifth.category().name());
+      expectTrue("fifth wave is final in theme", fifth.finalWaveInTheme());
+    });
+
+    test("themed generator last wave includes a harder mob for that faction", () -> {
+      var gen = new ThemedWaveGenerator(99L);
+      ThemedWave themedWave = null;
+      for (int i = 0; i < 5; i++) {
+        themedWave = gen.generateThemedWave(50);
+      }
+
+      expectTrue("final themed wave exists", themedWave != null && themedWave.finalWaveInTheme());
+      expectTrue("contains hard mob", containsTierAtLeast(themedWave.team(), MobTier.LATE));
+    });
+
     System.out.println();
     System.out.println("=== Summary ===");
     System.out.println("Passed: " + passed);
@@ -138,6 +167,15 @@ public final class WavesStep2Test {
         .orElseThrow();
   }
 
+  private static boolean containsTierAtLeast(Team team, MobTier tier) {
+    for (var c : team.getMembers()) {
+      if (c instanceof Mob mob && mob.getTier().ordinal() >= tier.ordinal()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private static void test(String name, Runnable body) {
     try {
       body.run();
@@ -165,6 +203,12 @@ public final class WavesStep2Test {
   private static void expectEquals(String label, String expected, String actual) {
     if (expected == null ? actual != null : !expected.equals(actual)) {
       throw new AssertionError(label + " expected " + expected + " but was " + actual);
+    }
+  }
+
+  private static void expectFalse(String label, boolean value) {
+    if (value) {
+      throw new AssertionError(label + " expected false but was true");
     }
   }
 }
