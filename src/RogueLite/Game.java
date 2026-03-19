@@ -53,7 +53,7 @@ public class Game {
               + THEME_LENGTH
               + "] --");
 
-      Battle.fight(baseTeam, wave.team());
+      Battle.fight(baseTeam, wave.team(), true);
       if (!baseTeam.isDefeated()) {
         int waveXp = Math.floorDiv((waveValue * 10), baseTeam.getAliveMembers().size());
         if (wave.finalWaveInTheme()) {

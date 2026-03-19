@@ -4,6 +4,7 @@ import RogueLite.Debug;
 import RogueLite.characters.Character;
 import RogueLite.characters.mobs.Mob;
 import RogueLite.characters.mobs.MobAiType;
+import RogueLite.characters.skills.Skill;
 import RogueLite.characters.skills.TargetType;
 import RogueLite.statuseffect.EffectActivation;
 import RogueLite.statuseffect.EffectType;
@@ -14,12 +15,18 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Scanner;
 
 public class Battle {
 
   private static final Random random = new Random();
+  private static final Scanner scanner = new Scanner(System.in);
 
   public static Team fight(Team team1, Team team2) {
+    return fight(team1, team2, false);
+  }
+
+  public static Team fight(Team team1, Team team2, boolean manualTeam1) {
     if (team1 == (null) || team2 == (null)) {
       throw new IllegalArgumentException("Teams cannot be null");
     }
@@ -32,8 +39,8 @@ public class Battle {
     int roundIndex = 1;
     while (true) {
       System.out.println("-- Round " + roundIndex + "--");
-      attackTeam(team1, team2);
-      attackTeam(team2, team1);
+      attackTeam(team1, team2, manualTeam1);
+      attackTeam(team2, team1, false);
       removeBuffs(team1);
       removeBuffs(team2);
       if (team1.isDefeated()) {
@@ -64,8 +71,22 @@ public class Battle {
     }
   }
 
+  private static void printAvailableCharacters(String label, List<? extends Character> characters) {
+    System.out.println(label + ":");
+    for (int i = 0; i < characters.size(); i++) {
+      System.out.println("  " + (i + 1) + ". " + describeCharacterForSelection(characters.get(i)));
+    }
+  }
+
   private static void attackTeam(
-      Team<? extends Character> attacker, Team<? extends Character> defender) {
+      Team<? extends Character> attacker,
+      Team<? extends Character> defender,
+      boolean manualControl) {
+    if (manualControl) {
+      handleManualTurn(attacker, defender);
+      return;
+    }
+
     for (Character c : attacker.getAliveMembers()) {
       if (defender.isDefeated()) return;
 
@@ -99,6 +120,130 @@ public class Battle {
       }
       c.applySkillCooldown();
     }
+  }
+
+  private static void handleManualTurn(
+      Team<? extends Character> attacker, Team<? extends Character> defender) {
+    List<Character> availableAttackers =
+        new ArrayList<>(attacker.getAliveMembers().stream().map(Character.class::cast).toList());
+
+    while (!availableAttackers.isEmpty() && !defender.isDefeated()) {
+      printAvailableCharacters("Heroes ready", availableAttackers);
+      Character actingHero =
+          availableAttackers.get(
+              readChoice("Choose a hero to act", availableAttackers.size()) - 1);
+
+      applyEffectsOnTurnStart(actingHero);
+      if (!actingHero.isAlive()) {
+        System.out.println(actingHero.getName() + " can no longer act.");
+        availableAttackers.remove(actingHero);
+        continue;
+      }
+
+      List<? extends Character> availableTargets = defender.getAliveMembers();
+      int action = readHeroAction(actingHero);
+      if (action == 2) {
+        List<Character> skillTargets = getManualTargetsForSkill(actingHero, attacker, defender);
+        Debug.log(
+            "Battle",
+            "Player selected "
+                + actingHero.getName()
+                + " -> skill "
+                + actingHero.getSkill().getName()
+                + " on "
+                + skillTargets.stream().map(Character::getName).toList());
+        actingHero.useSkill(skillTargets);
+        actingHero.initiateSkillCooldown();
+      } else {
+        printAvailableCharacters("Targets", availableTargets);
+        Character target =
+            availableTargets.get(readChoice("Choose a target", availableTargets.size()) - 1);
+
+        Debug.log("Battle", "Player selected " + actingHero.getName() + " -> " + target.getName());
+        double damages = actingHero.attack(target);
+        System.out.println(
+            actingHero.getName() + " attacks " + target.getName() + " for " + damages + " dmg " + target);
+      }
+      actingHero.applySkillCooldown();
+      availableAttackers.remove(actingHero);
+    }
+  }
+
+  private static String describeCharacterForSelection(Character character) {
+    Skill skill = character.getSkill();
+    if (skill == null) {
+      return character.toString() + " | Skill: none";
+    }
+    return character.toString() + " | Skill: " + formatSkillStatus(skill);
+  }
+
+  private static String formatSkillStatus(Skill skill) {
+    if (skill.getCooldownRemaining() == 0) {
+      return skill.getName() + " [READY]";
+    }
+    return skill.getName()
+        + " [CD "
+        + skill.getCooldownRemaining()
+        + "/"
+        + skill.getCooldownValue()
+        + "]";
+  }
+
+  private static int readHeroAction(Character hero) {
+    Skill skill = hero.getSkill();
+    if (skill == null) {
+      System.out.println(hero.getName() + " has no skill. Basic attack only.");
+      return 1;
+    }
+    if (!hero.canUseSkill()) {
+      System.out.println(hero.getName() + " skill unavailable: " + formatSkillStatus(skill));
+      return 1;
+    }
+    System.out.println(
+        hero.getName()
+            + " action: 1. Attack  2. Skill ("
+            + skill.getName()
+            + ", "
+            + formatTargetType(skill.getTargetType())
+            + ")");
+    return readChoice("Choose an action", 2);
+  }
+
+  private static String formatTargetType(TargetType targetType) {
+    return switch (targetType) {
+      case SELF -> "self";
+      case ALLY_SINGLE, ALLY_SINGLE_LOWEST_HP, ALLY_SINGLE_HIGHEST_HP -> "single ally";
+      case ALLY_MULTI_TARGET, ALLY_TEAM -> "all allies";
+      case ENNEMY_SINGLE, ENNEMY_SINGLE_LOWEST_HP, ENNEMY_SINGLE_HIGHEST_HP -> "single enemy";
+      case ENNEMY_MULTI_TARGET, ENNEMY_TEAM -> "all enemies";
+      case ALL -> "everyone";
+    };
+  }
+
+  private static List<Character> getManualTargetsForSkill(
+      Character caster, Team<? extends Character> attacker, Team<? extends Character> defender) {
+    return switch (caster.getSkill().getTargetType()) {
+      case SELF -> List.of(caster);
+      case ALLY_SINGLE, ALLY_SINGLE_LOWEST_HP, ALLY_SINGLE_HIGHEST_HP ->
+          List.of(selectTarget("Allies", attacker.getAliveMembers()));
+      case ALLY_MULTI_TARGET, ALLY_TEAM ->
+          new ArrayList<>(attacker.getAliveMembers().stream().map(Character.class::cast).toList());
+      case ENNEMY_SINGLE, ENNEMY_SINGLE_LOWEST_HP, ENNEMY_SINGLE_HIGHEST_HP ->
+          List.of(selectTarget("Targets", defender.getAliveMembers()));
+      case ENNEMY_MULTI_TARGET, ENNEMY_TEAM ->
+          new ArrayList<>(defender.getAliveMembers().stream().map(Character.class::cast).toList());
+      case ALL -> {
+        List<Character> allTargets = new ArrayList<>();
+        allTargets.addAll(attacker.getAliveMembers().stream().map(Character.class::cast).toList());
+        allTargets.addAll(defender.getAliveMembers().stream().map(Character.class::cast).toList());
+        yield allTargets;
+      }
+    };
+  }
+
+  private static Character selectTarget(String label, List<? extends Character> availableTargets) {
+    printAvailableCharacters(label, availableTargets);
+    return availableTargets.get(readChoice("Choose a target", availableTargets.size()) - 1);
   }
 
   private static void applyEffectsOnTurnStart(Character character) {
@@ -278,5 +423,21 @@ public class Battle {
 
   private static boolean hasNegativeEffect(Character target) {
     return target.getStatusEffects().stream().anyMatch(effect -> effect.getType() == EffectType.RECURRENT);
+  }
+
+  private static int readChoice(String prompt, int maxValue) {
+    while (true) {
+      System.out.print(prompt + " [1-" + maxValue + "]: ");
+      String rawValue = scanner.nextLine();
+      try {
+        int choice = Integer.parseInt(rawValue.trim());
+        if (choice >= 1 && choice <= maxValue) {
+          return choice;
+        }
+      } catch (NumberFormatException ignored) {
+        // Retry below.
+      }
+      System.out.println("Invalid choice. Try again.");
+    }
   }
 }
