@@ -41,7 +41,7 @@ class PlayerProgress {
   }
 
   static const heroCost = 50;
-  static const heroLevelCost = 5;
+  static const heroLevelCostStep = 5;
   static const maxPermanentHeroLevel = 50;
 
   int gems;
@@ -87,22 +87,29 @@ class PlayerProgress {
     return true;
   }
 
-  bool canUpgradeHero(String heroName, LevelUpStat stat) {
-    return isUnlocked(heroName) &&
-        levelFor(heroName) < maxPermanentHeroLevel &&
-        gems >= heroLevelCost;
+  int upgradeCostFor(String heroName) {
+    return levelFor(heroName) * heroLevelCostStep;
   }
 
-  bool upgradeHero(String heroName, LevelUpStat stat) {
-    if (!canUpgradeHero(heroName, stat)) return false;
-    gems -= heroLevelCost;
-    heroStats[heroName] = statPointsFor(heroName).add(stat);
+  bool canUpgradeHero(String heroName) {
+    return isUnlocked(heroName) &&
+        levelFor(heroName) < maxPermanentHeroLevel &&
+        gems >= upgradeCostFor(heroName);
+  }
+
+  bool upgradeHero(String heroName) {
+    if (!canUpgradeHero(heroName)) return false;
+    gems -= upgradeCostFor(heroName);
+    heroStats[heroName] = statPointsFor(heroName).addUnassigned();
     return true;
   }
 
   bool canReallocateHeroStats(String heroName, HeroStatPoints stats) {
     if (!isUnlocked(heroName)) return false;
-    if (stats.maxHp < 0 || stats.attack < 0 || stats.defence < 0) {
+    if (stats.maxHp < 0 ||
+        stats.attack < 0 ||
+        stats.defence < 0 ||
+        stats.unassigned < 0) {
       return false;
     }
     return stats.total == statPointsFor(heroName).total &&
@@ -129,7 +136,9 @@ class PlayerProgress {
     var stats = const HeroStatPoints();
     final points = (level - 1).clamp(0, maxPermanentHeroLevel - 1);
     for (var i = 0; i < points; i++) {
-      stats = stats.add(LevelUpStat.values[i % LevelUpStat.values.length]);
+      stats = stats.addUnassigned().assign(
+        LevelUpStat.values[i % LevelUpStat.values.length],
+      );
     }
     return stats;
   }

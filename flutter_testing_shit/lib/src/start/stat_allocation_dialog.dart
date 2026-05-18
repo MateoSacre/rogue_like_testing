@@ -14,7 +14,7 @@ class _StatAllocationDialogState extends State<_StatAllocationDialog> {
   late HeroStatPoints stats;
 
   int get total => widget.initialStats.total;
-  int get remaining => total - stats.total;
+  int get remaining => stats.unassigned;
 
   @override
   void initState() {
@@ -37,7 +37,7 @@ class _StatAllocationDialogState extends State<_StatAllocationDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Niveau ${total + 1} - Points restants: $remaining'),
+            Text('Niveau ${total + 1} - Points non attribues: $remaining'),
             const SizedBox(height: AppLayout.sectionGap),
             _StatAllocationRow(
               stat: LevelUpStat.maxHp,
@@ -46,10 +46,10 @@ class _StatAllocationDialogState extends State<_StatAllocationDialog> {
               canRemove: stats.maxHp > 0,
               canAdd: remaining > 0,
               onRemove: () => setState(() {
-                stats = stats.remove(LevelUpStat.maxHp);
+                stats = stats.unassign(LevelUpStat.maxHp);
               }),
               onAdd: () => setState(() {
-                stats = stats.add(LevelUpStat.maxHp);
+                stats = stats.assign(LevelUpStat.maxHp);
               }),
             ),
             _StatAllocationRow(
@@ -59,10 +59,10 @@ class _StatAllocationDialogState extends State<_StatAllocationDialog> {
               canRemove: stats.attack > 0,
               canAdd: remaining > 0,
               onRemove: () => setState(() {
-                stats = stats.remove(LevelUpStat.attack);
+                stats = stats.unassign(LevelUpStat.attack);
               }),
               onAdd: () => setState(() {
-                stats = stats.add(LevelUpStat.attack);
+                stats = stats.assign(LevelUpStat.attack);
               }),
             ),
             _StatAllocationRow(
@@ -72,10 +72,10 @@ class _StatAllocationDialogState extends State<_StatAllocationDialog> {
               canRemove: stats.defence > 0,
               canAdd: remaining > 0,
               onRemove: () => setState(() {
-                stats = stats.remove(LevelUpStat.defence);
+                stats = stats.unassign(LevelUpStat.defence);
               }),
               onAdd: () => setState(() {
-                stats = stats.add(LevelUpStat.defence);
+                stats = stats.assign(LevelUpStat.defence);
               }),
             ),
           ],
@@ -87,9 +87,7 @@ class _StatAllocationDialogState extends State<_StatAllocationDialog> {
           child: const Text('Annuler'),
         ),
         FilledButton(
-          onPressed: remaining == 0
-              ? () => Navigator.of(context).pop(stats)
-              : null,
+          onPressed: () => Navigator.of(context).pop(stats),
           child: const Text('Appliquer'),
         ),
       ],

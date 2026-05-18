@@ -5,8 +5,9 @@ void main() {
   testWidgets('game screen smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const RogueLiteApp());
 
-    expect(find.text('Heroes'), findsOneWidget);
-    expect(find.text('Enemies'), findsOneWidget);
-    expect(find.text('Battle log'), findsOneWidget);
+    expect(find.text('RogueLite'), findsOneWidget);
+    expect(find.text('Run'), findsOneWidget);
+    expect(find.text('Heros'), findsOneWidget);
+    expect(find.text('Niveaux'), findsOneWidget);
   });
 }

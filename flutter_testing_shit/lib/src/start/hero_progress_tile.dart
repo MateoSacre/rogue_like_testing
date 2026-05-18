@@ -35,7 +35,8 @@ class _HeroProgressTile extends StatelessWidget {
                     Text(
                       '+${progress.statPointsFor(hero.name).maxHp} HP  '
                       '+${progress.statPointsFor(hero.name).attack} ATK  '
-                      '+${progress.statPointsFor(hero.name).defence} DEF',
+                      '+${progress.statPointsFor(hero.name).defence} DEF  '
+                      '${progress.statPointsFor(hero.name).unassigned} libres',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   if (hero.skill != null)

@@ -185,37 +185,31 @@ class _StartScreenState extends State<StartScreen> {
           icon: Icons.trending_up,
           title: 'Ameliorer les heros',
           subtitle:
-              '${PlayerProgress.heroLevelCost} gemmes par point, max niveau ${PlayerProgress.maxPermanentHeroLevel}',
+              'Achete des points. Le prix augmente de ${PlayerProgress.heroLevelCostStep} gemmes a chaque niveau.',
         ),
         const SizedBox(height: AppLayout.sectionGap),
         if (unlocked.isEmpty)
-          const Text('Debloque d abord un hero pour l ameliorer.')
+          const Text('Debloque d abord un hero pour l\'ameliorer.')
         else
           ...unlocked.map((hero) {
             final level = widget.progress.levelFor(hero.name);
+            final cost = widget.progress.upgradeCostFor(hero.name);
             return _HeroProgressTile(
               hero: _heroWithProgress(hero),
               progress: widget.progress,
-              trailing: Wrap(
-                spacing: AppLayout.tinyGap,
-                runSpacing: AppLayout.tinyGap,
-                children: LevelUpStat.values.map((stat) {
-                  return FilledButton.tonalIcon(
-                    onPressed: widget.progress.canUpgradeHero(hero.name, stat)
-                        ? () => _mutateProgress(
-                            clearBattle: true,
-                            action: () =>
-                                widget.progress.upgradeHero(hero.name, stat),
-                          )
-                        : null,
-                    icon: const Icon(Icons.add),
-                    label: Text(
-                      level >= PlayerProgress.maxPermanentHeroLevel
-                          ? 'Max'
-                          : '${_shortStat(stat)} ${PlayerProgress.heroLevelCost}',
-                    ),
-                  );
-                }).toList(),
+              trailing: FilledButton.tonalIcon(
+                onPressed: widget.progress.canUpgradeHero(hero.name)
+                    ? () => _mutateProgress(
+                        clearBattle: true,
+                        action: () => widget.progress.upgradeHero(hero.name),
+                      )
+                    : null,
+                icon: const Icon(Icons.add),
+                label: Text(
+                  level >= PlayerProgress.maxPermanentHeroLevel
+                      ? 'Max'
+                      : '$cost gemmes',
+                ),
               ),
             );
           }),
