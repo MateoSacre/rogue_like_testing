@@ -596,7 +596,11 @@ class _GameScreenState extends State<GameScreen> {
     required String label,
     VoidCallback? onChanged,
   }) async {
-    final hero = await _pickHero(title: label, heroes: battle.heroes.alive);
+    final hero = await _pickHero(
+      title: label,
+      heroes: battle.heroes.alive,
+      showXp: true,
+    );
     if (hero == null) return;
     update(() => battle.buyXpPotion(hero, xp: xp, cost: cost, label: label));
     await _resolvePendingLevelUps();
@@ -644,6 +648,7 @@ class _GameScreenState extends State<GameScreen> {
     required String title,
     required Iterable<Fighter> heroes,
     String Function(Fighter hero)? subtitleFor,
+    bool showXp = false,
   }) {
     final choices = heroes.toList();
     return showDialog<Fighter>(
@@ -663,6 +668,39 @@ class _GameScreenState extends State<GameScreen> {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       if (subtitleFor != null) Text(subtitleFor(hero)),
+                      if (showXp) ...[
+                        const SizedBox(height: AppLayout.tinyGap),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Level ${hero.level}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                            Text(
+                              'XP ${hero.xp}/${hero.xpCap}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppLayout.tinyGap),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            AppLayout.progressRadius,
+                          ),
+                          child: LinearProgressIndicator(
+                            minHeight: AppLayout.progressBarHeight,
+                            value: (hero.xpCap == 0 ? 1 : hero.xp / hero.xpCap)
+                                .clamp(0, 1)
+                                .toDouble(),
+                            backgroundColor: AppColors.progressTrack(context),
+                            valueColor: const AlwaysStoppedAnimation(
+                              AppColors.xpProgress,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

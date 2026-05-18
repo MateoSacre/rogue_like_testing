@@ -21,7 +21,7 @@ class AppLayout {
   static const fighterCardMaxWidth = 320.0;
   static const heroCardHeight = 196.0;
   static const enemyCardHeight = 158.0;
-  static const compactHeroCardHeight = 82.0;
+  static const compactHeroCardHeight = 92.0;
   static const compactEnemyCardHeight = 62.0;
   static const iconSmall = 18.0;
   static const iconMedium = 20.0;
