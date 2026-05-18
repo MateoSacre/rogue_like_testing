@@ -49,6 +49,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late final BattleController battle;
+  late GameSettings settings;
   final ScrollController _heroesScrollController = ScrollController();
   final ScrollController _centerScrollController = ScrollController();
   final ScrollController _enemiesScrollController = ScrollController();
@@ -56,12 +57,14 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    settings = widget.settings;
     battle = widget.initialBattleJson == null
         ? BattleController(
             heroes: widget.initialHeroes,
             gems: widget.progress.gems,
           )
         : BattleController.fromJson(widget.initialBattleJson!);
+    battle.devMode = settings.devMode;
     _syncProgressGems();
   }
 
@@ -79,7 +82,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _mobAttackDelay() {
-    return Future<void>.delayed(widget.settings.autoAttackSpeed.duration);
+    return Future<void>.delayed(settings.autoAttackSpeed.duration);
   }
 
   void _refresh() {
@@ -92,7 +95,7 @@ class _GameScreenState extends State<GameScreen> {
     final battleJson = battle.toJson();
     widget.onBattleSaved(battleJson);
     return SaveService.save(
-      settings: widget.settings,
+      settings: settings,
       progress: widget.progress,
       battleJson: battleJson,
     );
@@ -144,11 +147,13 @@ class _GameScreenState extends State<GameScreen> {
       MaterialPageRoute<bool>(
         builder: (context) {
           return SettingsScreen(
-            settings: widget.settings,
-            onChanged: (settings) {
-              widget.onSettingsChanged(settings);
+            settings: settings,
+            onChanged: (value) {
+              setState(() => settings = value);
+              battle.devMode = value.devMode;
+              widget.onSettingsChanged(value);
               SaveService.save(
-                settings: settings,
+                settings: value,
                 progress: widget.progress,
                 battle: battle,
               );
@@ -320,7 +325,7 @@ class _GameScreenState extends State<GameScreen> {
                         await battle.performSelectedAction(
                           pause: _mobAttackDelay,
                           notify: _refresh,
-                          levelUpMode: widget.settings.levelUpMode,
+                          levelUpMode: settings.levelUpMode,
                         );
                         await _resolvePendingLevelUps();
                         _refresh();
@@ -349,11 +354,10 @@ class _GameScreenState extends State<GameScreen> {
                         await battle.performAutoAttack(
                           pause: _mobAttackDelay,
                           notify: _refresh,
-                          useSkills: widget.settings.autoUseSkills,
-                          autoBuyHealingItems:
-                              widget.settings.autoBuyHealingItems,
-                          useHealingItems: widget.settings.autoUseHealingItems,
-                          levelUpMode: widget.settings.levelUpMode,
+                          useSkills: settings.autoUseSkills,
+                          autoBuyHealingItems: settings.autoBuyHealingItems,
+                          useHealingItems: settings.autoUseHealingItems,
+                          levelUpMode: settings.levelUpMode,
                         );
                         await _resolvePendingLevelUps();
                         _refresh();
@@ -657,7 +661,7 @@ class _GameScreenState extends State<GameScreen> {
   Future<void> _continueAfterMerchant() async {
     final shouldResumeAuto = battle.resumeAutoAttackAfterMerchant;
     update(() {
-      if (widget.settings.autoBuyHealingItems) {
+      if (settings.autoBuyHealingItems) {
         battle.autoBuyHealingItems();
       }
       battle.continueAfterMerchant();
@@ -666,10 +670,10 @@ class _GameScreenState extends State<GameScreen> {
     await battle.performAutoAttack(
       pause: _mobAttackDelay,
       notify: _refresh,
-      useSkills: widget.settings.autoUseSkills,
-      autoBuyHealingItems: widget.settings.autoBuyHealingItems,
-      useHealingItems: widget.settings.autoUseHealingItems,
-      levelUpMode: widget.settings.levelUpMode,
+      useSkills: settings.autoUseSkills,
+      autoBuyHealingItems: settings.autoBuyHealingItems,
+      useHealingItems: settings.autoUseHealingItems,
+      levelUpMode: settings.levelUpMode,
     );
     await _resolvePendingLevelUps();
     _refresh();
@@ -1039,6 +1043,7 @@ class _GameScreenState extends State<GameScreen> {
         pickable: canPickHero,
         acted: hasActed,
         compact: compact,
+        showDevInfo: settings.devMode && !heroes,
         onTap: canPickHero && !battle.isAnimating && !battle.autoAttackEnabled
             ? () => update(() => battle.selectHero(fighter))
             : canToggleTarget

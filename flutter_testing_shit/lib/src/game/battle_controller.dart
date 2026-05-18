@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:math';
 
 import '../data/heroes.dart';
@@ -50,6 +51,7 @@ class BattleController implements BattleActions {
   bool isAnimating = false;
   bool autoAttackEnabled = false;
   bool isAutoAttackRunning = false;
+  bool devMode = false;
   LevelUpMode currentLevelUpMode = LevelUpMode.manual;
 
   Team get mobs => waveInfo.team;
@@ -498,6 +500,9 @@ class BattleController implements BattleActions {
   @override
   void addLog(String message) {
     log.insert(0, message);
+    if (devMode) {
+      developer.log(message, name: 'BattleLog');
+    }
     if (log.length > GameBalance.maxLogEntries) {
       log.removeLast();
     }

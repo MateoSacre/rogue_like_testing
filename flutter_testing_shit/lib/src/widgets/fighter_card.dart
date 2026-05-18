@@ -17,6 +17,7 @@ class FighterCard extends StatelessWidget {
     required this.pickable,
     this.acted = false,
     this.compact = false,
+    this.showDevInfo = false,
     this.onTap,
     super.key,
   });
@@ -26,6 +27,7 @@ class FighterCard extends StatelessWidget {
   final bool pickable;
   final bool acted;
   final bool compact;
+  final bool showDevInfo;
   final VoidCallback? onTap;
 
   @override
@@ -98,6 +100,8 @@ class FighterCard extends StatelessWidget {
                             Text(
                               'HP ${fmt(fighter.hp)}/${fmt(fighter.maxHp)}  ATK ${fmt(fighter.attackPower)}  DEF ${fmt(fighter.defence)}',
                             ),
+                            if (showDevInfo && !fighter.isHero)
+                              Text('AI ${fighter.aiType.name}'),
                             if (fighter.isHero)
                               _CompactProgressLine(
                                 label: 'LVL ${fighter.level}',
@@ -182,6 +186,13 @@ class FighterCard extends StatelessWidget {
                 Text(
                   'ATK ${fmt(fighter.attackPower)}   DEF ${fmt(fighter.defence)}',
                 ),
+                if (showDevInfo && !fighter.isHero)
+                  Text(
+                    'AI ${fighter.aiType.name}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 if (fighter.isHero) ...[
                   const SizedBox(height: AppLayout.compactGap),
                   _XpBar(fighter: fighter),

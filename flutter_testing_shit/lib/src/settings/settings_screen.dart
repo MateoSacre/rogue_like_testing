@@ -91,6 +91,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) =>
                 update(settings.copyWith(autoUseHealingItems: value)),
           ),
+          SwitchListTile(
+            title: const Text('Dev mode'),
+            subtitle: const Text(
+              'Affiche progressivement des informations de debug.',
+            ),
+            value: settings.devMode,
+            onChanged: (value) => update(settings.copyWith(devMode: value)),
+          ),
           const SizedBox(height: AppLayout.sectionGap),
           Text('Level-up', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppLayout.controlGap),
