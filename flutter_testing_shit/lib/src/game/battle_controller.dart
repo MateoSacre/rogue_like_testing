@@ -16,8 +16,8 @@ import 'targeting.dart';
 import 'wave_generator.dart';
 
 class BattleController implements BattleActions {
-  BattleController() {
-    resetGame();
+  BattleController({List<Fighter>? heroes, int gems = 0}) {
+    resetGame(heroes: heroes, gems: gems);
   }
 
   BattleController.fromJson(Map<String, dynamic> json) {
@@ -78,13 +78,18 @@ class BattleController implements BattleActions {
 
   bool get hasInjuredHero => heroes.alive.any((hero) => hero.hp < hero.maxHp);
 
-  void resetGame() {
+  void resetGame({List<Fighter>? heroes, int? gems}) {
     waveGenerator = ThemedWaveGenerator(random);
-    heroes = Team('Base Team', buildBaseTeam());
+    this.heroes = Team(
+      'Base Team',
+      (heroes == null || heroes.isEmpty)
+          ? buildBaseTeam()
+          : heroes.map((hero) => hero.copy()).toList(),
+    );
     waveCounter = 0;
     roundCounter = 1;
     gold = 0;
-    gems = 0;
+    this.gems = gems ?? this.gems;
     healingPotionStock = 0;
     teamPotionStock = 0;
     specialPotionStock = 0;

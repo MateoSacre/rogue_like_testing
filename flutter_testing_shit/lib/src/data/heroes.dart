@@ -1,5 +1,15 @@
 import '../models/fighter.dart';
+import '../models/level_up_stat.dart';
 import 'skills.dart';
+
+const List<String> heroNames = [
+  'Paladin',
+  'Warrior',
+  'Artificier',
+  'Archer',
+  'Priest',
+  'Mage',
+];
 
 List<Fighter> buildBaseTeam() {
   return [
@@ -60,4 +70,42 @@ List<Fighter> buildBaseTeam() {
       isHero: true,
     ),
   ];
+}
+
+List<Fighter> buildHeroRoster() {
+  return buildBaseTeam();
+}
+
+List<Fighter> buildTeamFromProgress({
+  required Iterable<String> selectedHeroNames,
+  required int Function(String heroName) levelFor,
+  required int Function(String heroName, LevelUpStat stat) statPointsFor,
+}) {
+  final selected = selectedHeroNames.toSet();
+  return buildHeroRoster()
+      .where((hero) => selected.contains(hero.name))
+      .map(
+        (hero) => heroWithPermanentStats(
+          hero,
+          levelFor(hero.name),
+          (stat) => statPointsFor(hero.name, stat),
+        ),
+      )
+      .toList();
+}
+
+Fighter heroWithPermanentStats(
+  Fighter baseHero,
+  int permanentLevel,
+  int Function(LevelUpStat stat) statPointsFor,
+) {
+  final hero = baseHero.copy();
+  final safeLevel = permanentLevel.clamp(1, 50);
+  hero.maxHp += statPointsFor(LevelUpStat.maxHp);
+  hero.attackPower += statPointsFor(LevelUpStat.attack);
+  hero.baseDefence += statPointsFor(LevelUpStat.defence);
+  hero.level = safeLevel;
+  hero.xp = 0;
+  hero.hp = hero.maxHp;
+  return hero;
 }

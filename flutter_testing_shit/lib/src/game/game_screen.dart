@@ -5,6 +5,7 @@ import '../models/fighter.dart';
 import '../models/level_up_stat.dart';
 import '../models/team.dart';
 import '../persistence/save_service.dart';
+import '../progression/player_progress.dart';
 import '../settings/game_settings.dart';
 import '../settings/settings_screen.dart';
 import '../theme/app_colors.dart';
@@ -14,17 +15,33 @@ import '../widgets/fighter_card.dart';
 import 'battle_controller.dart';
 import 'game_balance.dart';
 
+part 'boss_warning.dart';
+part 'inventory_widgets.dart';
+part 'level_up_dialog.dart';
+part 'merchant_action.dart';
+part 'target_preview_label.dart';
+
 class GameScreen extends StatefulWidget {
   const GameScreen({
     required this.settings,
+    required this.progress,
+    required this.initialHeroes,
     required this.onSettingsChanged,
+    required this.onProgressChanged,
+    required this.onBattleSaved,
+    required this.onResetProgress,
     this.initialBattleJson,
     super.key,
   });
 
   final GameSettings settings;
+  final PlayerProgress progress;
   final Map<String, dynamic>? initialBattleJson;
+  final List<Fighter> initialHeroes;
   final ValueChanged<GameSettings> onSettingsChanged;
+  final ValueChanged<PlayerProgress> onProgressChanged;
+  final ValueChanged<Map<String, dynamic>?> onBattleSaved;
+  final Future<void> Function() onResetProgress;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -40,8 +57,12 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     battle = widget.initialBattleJson == null
-        ? BattleController()
+        ? BattleController(
+            heroes: widget.initialHeroes,
+            gems: widget.progress.gems,
+          )
         : BattleController.fromJson(widget.initialBattleJson!);
+    _syncProgressGems();
   }
 
   @override
@@ -67,7 +88,20 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> saveGame() {
-    return SaveService.save(settings: widget.settings, battle: battle);
+    _syncProgressGems();
+    final battleJson = battle.toJson();
+    widget.onBattleSaved(battleJson);
+    return SaveService.save(
+      settings: widget.settings,
+      progress: widget.progress,
+      battleJson: battleJson,
+    );
+  }
+
+  void _syncProgressGems() {
+    if (widget.progress.gems == battle.gems) return;
+    widget.progress.gems = battle.gems;
+    widget.onProgressChanged(widget.progress);
   }
 
   @override
@@ -81,7 +115,12 @@ class _GameScreenState extends State<GameScreen> {
         actions: [
           IconButton(
             tooltip: 'Restart',
-            onPressed: () => update(battle.resetGame),
+            onPressed: () => update(
+              () => battle.resetGame(
+                heroes: widget.initialHeroes,
+                gems: widget.progress.gems,
+              ),
+            ),
             icon: const Icon(Icons.restart_alt),
           ),
           IconButton(
@@ -101,19 +140,27 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    final reset = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
         builder: (context) {
           return SettingsScreen(
             settings: widget.settings,
             onChanged: (settings) {
               widget.onSettingsChanged(settings);
-              SaveService.save(settings: settings, battle: battle);
+              SaveService.save(
+                settings: settings,
+                progress: widget.progress,
+                battle: battle,
+              );
             },
+            onResetProgress: widget.onResetProgress,
           );
         },
       ),
     );
+    if (reset == true && mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   Widget _wideLayout() {
@@ -198,7 +245,12 @@ class _GameScreenState extends State<GameScreen> {
         ],
         if (battle.gameOver)
           FilledButton.icon(
-            onPressed: () => update(battle.resetGame),
+            onPressed: () => update(
+              () => battle.resetGame(
+                heroes: widget.initialHeroes,
+                gems: widget.progress.gems,
+              ),
+            ),
             icon: const Icon(Icons.restart_alt),
             label: const Text('Restart run'),
           )
@@ -284,7 +336,9 @@ class _GameScreenState extends State<GameScreen> {
                 label: Text(
                   compact
                       ? (hero == null ? 'Hero' : 'Act')
-                      : (hero == null ? 'Choose a hero' : 'Act with ${hero.name}'),
+                      : (hero == null
+                            ? 'Choose a hero'
+                            : 'Act with ${hero.name}'),
                 ),
               ),
               OutlinedButton.icon(
@@ -389,9 +443,7 @@ class _GameScreenState extends State<GameScreen> {
           'R${battle.roundCounter}',
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        Text(
-          'H ${battle.heroes.alive.length}/${battle.heroes.members.length}',
-        ),
+        Text('H ${battle.heroes.alive.length}/${battle.heroes.members.length}'),
         Text('E ${battle.mobs.alive.length}/${battle.mobs.members.length}'),
         Text('G ${battle.gold}'),
         Text('Gem ${battle.gems}'),
@@ -427,10 +479,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _merchantContent({
-    VoidCallback? onChanged,
-    VoidCallback? onContinue,
-  }) {
+  Widget _merchantContent({VoidCallback? onChanged, VoidCallback? onContinue}) {
     void merchantUpdate(VoidCallback action) {
       update(action);
       onChanged?.call();
@@ -546,8 +595,7 @@ class _GameScreenState extends State<GameScreen> {
           subtitle: 'Adds one extra special charge bar',
           cost: GameBalance.specialBarUpgradeCost,
           enabled: battle.canBuySpecialBarUpgrade && _hasHeroWithSkill(),
-          onPressed: () =>
-              _buyTargetedSpecialBarUpgrade(onChanged: onChanged),
+          onPressed: () => _buyTargetedSpecialBarUpgrade(onChanged: onChanged),
         ),
         const Divider(height: AppLayout.panelGap),
         OutlinedButton.icon(
@@ -893,8 +941,7 @@ class _GameScreenState extends State<GameScreen> {
                   ? AppLayout.compactHeroCardHeight
                   : AppLayout.compactEnemyCardHeight;
               final availableHeight =
-                  constraints.maxHeight -
-                  (safeRows - 1) * AppLayout.controlGap;
+                  constraints.maxHeight - (safeRows - 1) * AppLayout.controlGap;
               final cardHeight = (availableHeight / safeRows)
                   .clamp(heroes ? 68.0 : 54.0, preferredHeight)
                   .toDouble();
@@ -967,274 +1014,5 @@ class _GameScreenState extends State<GameScreen> {
         child: card,
       );
     }).toList();
-  }
-}
-
-class _TargetPreviewLabel extends StatelessWidget {
-  const _TargetPreviewLabel({required this.name, required this.preview});
-
-  final String name;
-  final String preview;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(name),
-        if (preview.isNotEmpty)
-          Text(
-            preview,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-      ],
-    );
-  }
-}
-
-enum _InventoryItemKind { healing, team, special }
-
-class _InventoryItem {
-  const _InventoryItem({
-    required this.kind,
-    required this.icon,
-    required this.label,
-    required this.count,
-  });
-
-  final _InventoryItemKind kind;
-  final IconData icon;
-  final String label;
-  final int count;
-}
-
-class _InventoryDraggable extends StatelessWidget {
-  const _InventoryDraggable({required this.item, required this.enabled});
-
-  final _InventoryItem item;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final chip = _InventoryChip(item: item, enabled: enabled);
-    if (!enabled) return chip;
-    return Draggable<_InventoryItemKind>(
-      data: item.kind,
-      feedback: Material(
-        elevation: 6,
-        borderRadius: BorderRadius.circular(AppLayout.borderRadius),
-        child: _InventoryChip(item: item, enabled: true),
-      ),
-      childWhenDragging: Opacity(opacity: .45, child: chip),
-      child: chip,
-    );
-  }
-}
-
-class _InventoryChip extends StatelessWidget {
-  const _InventoryChip({required this.item, required this.enabled});
-
-  final _InventoryItem item;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: enabled ? 1 : .45,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppLayout.warningHorizontalPadding,
-          vertical: AppLayout.warningVerticalPadding,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppLayout.borderRadius),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(item.icon, size: AppLayout.iconMedium),
-            const SizedBox(width: AppLayout.controlGap),
-            Text('${item.label} x${item.count}'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InventoryHeroTarget extends StatelessWidget {
-  const _InventoryHeroTarget({
-    required this.hero,
-    required this.canUse,
-    required this.onAccept,
-  });
-
-  final Fighter hero;
-  final bool canUse;
-  final void Function(_InventoryItemKind kind, Fighter hero) onAccept;
-
-  @override
-  Widget build(BuildContext context) {
-    return DragTarget<_InventoryItemKind>(
-      onWillAcceptWithDetails: (_) => canUse,
-      onAcceptWithDetails: (details) {
-        onAccept(details.data, hero);
-      },
-      builder: (context, candidateData, rejectedData) {
-        final highlighted = candidateData.isNotEmpty;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: 180,
-          padding: const EdgeInsets.all(AppLayout.cardPadding),
-          decoration: BoxDecoration(
-            color: highlighted ? AppColors.cardSelected(context) : null,
-            borderRadius: BorderRadius.circular(AppLayout.borderRadius),
-            border: Border.all(
-              color: highlighted
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Opacity(
-            opacity: hero.isAlive ? 1 : .42,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hero.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: AppLayout.tinyGap),
-                Text('HP ${fmt(hero.hp)}/${fmt(hero.maxHp)}'),
-                if (hero.skill != null)
-                  Text(
-                    '${hero.skill!.charge}/${hero.skill!.maxCharge} special',
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _MerchantAction extends StatelessWidget {
-  const _MerchantAction({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.cost,
-    required this.enabled,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final int cost;
-  final bool enabled;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: enabled ? onPressed : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppLayout.compactGap),
-        child: Row(
-          children: [
-            Icon(icon, size: AppLayout.iconMedium),
-            const SizedBox(width: AppLayout.controlGap),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title),
-                  Text(subtitle, style: Theme.of(context).textTheme.labelSmall),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppLayout.controlGap),
-            Text('${cost}g'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LevelUpDialog extends StatelessWidget {
-  const _LevelUpDialog({required this.pending, required this.battle});
-
-  final PendingLevelUp pending;
-  final BattleController battle;
-
-  @override
-  Widget build(BuildContext context) {
-    final hero = pending.hero;
-    return AlertDialog(
-      title: Text('${hero.name} gagne un niveau'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: LevelUpStat.values.map((stat) {
-          final increase = battle.levelUpIncreaseFor(hero, stat);
-          return Padding(
-            padding: const EdgeInsets.only(bottom: AppLayout.controlGap),
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(stat),
-              child: Text(stat.describe(hero, increase)),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _BossWarning extends StatelessWidget {
-  const _BossWarning({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final foregroundColor = AppColors.warningForeground(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppLayout.warningHorizontalPadding,
-        vertical: AppLayout.warningVerticalPadding,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.warningBackground(context),
-        borderRadius: BorderRadius.circular(AppLayout.borderRadius),
-        border: Border.all(color: AppColors.warningBorder(context)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: foregroundColor, size: AppLayout.iconMedium),
-          const SizedBox(width: AppLayout.controlGap),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: foregroundColor,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

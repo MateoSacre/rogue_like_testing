@@ -6,6 +6,10 @@ import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../utils/format.dart';
 
+part 'compact_progress_line.dart';
+part 'skill_charge_bar.dart';
+part 'xp_bar.dart';
+
 class FighterCard extends StatelessWidget {
   const FighterCard({
     required this.fighter,
@@ -96,8 +100,7 @@ class FighterCard extends StatelessWidget {
                             ),
                             if (fighter.isHero)
                               _CompactProgressLine(
-                                label:
-                                    'LVL ${fighter.level}',
+                                label: 'LVL ${fighter.level}',
                                 value: fighter.xpCap == 0
                                     ? 1
                                     : fighter.xp / fighter.xpCap,
@@ -208,141 +211,5 @@ class FighterCard extends StatelessWidget {
     if (selected) return AppColors.cardSelected(context);
     if (acted) return AppColors.cardActed(context);
     return null;
-  }
-}
-
-class _XpBar extends StatelessWidget {
-  const _XpBar({required this.fighter});
-
-  final Fighter fighter;
-
-  @override
-  Widget build(BuildContext context) {
-    final xpCap = fighter.xpCap;
-    final ratio = xpCap == 0 ? 1.0 : fighter.xp / xpCap;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text('LVL ${fighter.level}')),
-            Text('XP ${fighter.xp}/$xpCap'),
-          ],
-        ),
-        const SizedBox(height: AppLayout.tinyGap),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppLayout.progressRadius),
-          child: LinearProgressIndicator(
-            minHeight: AppLayout.progressBarHeight,
-            value: ratio.clamp(0, 1).toDouble(),
-            backgroundColor: AppColors.progressTrack(context),
-            valueColor: const AlwaysStoppedAnimation(AppColors.xpProgress),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CompactProgressLine extends StatelessWidget {
-  const _CompactProgressLine({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final double value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Row(
-        children: [
-          Expanded(child: Text(label)),
-          const SizedBox(width: AppLayout.tinyGap),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppLayout.progressRadius),
-              child: LinearProgressIndicator(
-                minHeight: 4,
-                value: value.clamp(0, 1).toDouble(),
-                backgroundColor: AppColors.progressTrack(context),
-                valueColor: AlwaysStoppedAnimation(color),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SkillChargeBar extends StatelessWidget {
-  const _SkillChargeBar({required this.skill});
-
-  final Skill skill;
-
-  @override
-  Widget build(BuildContext context) {
-    final barRows = <Widget>[];
-    for (var start = 0; start < skill.chargeBars; start += 2) {
-      final barsInRow = skill.chargeBars - start >= 2 ? 2 : 1;
-      barRows.add(
-        Row(
-          children: List.generate(barsInRow, (index) {
-            final barIndex = start + index;
-            final filled = (skill.charge - barIndex * skill.chargeMax).clamp(
-              0,
-              skill.chargeMax,
-            );
-            final ratio = skill.chargeMax == 0 ? 1.0 : filled / skill.chargeMax;
-            return Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: index == 0 ? 0 : AppLayout.tinyGap,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppLayout.progressRadius),
-                  child: LinearProgressIndicator(
-                    minHeight: AppLayout.progressBarHeight,
-                    value: ratio.toDouble(),
-                    backgroundColor: AppColors.progressTrack(context),
-                    valueColor: const AlwaysStoppedAnimation(
-                      AppColors.skillCharge,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                skill.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: AppLayout.controlGap),
-            Text('${skill.charge}/${skill.maxCharge}'),
-          ],
-        ),
-        const SizedBox(height: AppLayout.tinyGap),
-        ...(barRows
-            .expand((row) => [row, const SizedBox(height: AppLayout.tinyGap)])
-            .toList()
-          ..removeLast()),
-      ],
-    );
   }
 }
