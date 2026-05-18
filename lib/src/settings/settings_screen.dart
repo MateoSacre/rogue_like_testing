@@ -21,11 +21,19 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late GameSettings settings;
+  late final TextEditingController seedController;
 
   @override
   void initState() {
     super.initState();
     settings = widget.settings;
+    seedController = TextEditingController(text: settings.seedString);
+  }
+
+  @override
+  void dispose() {
+    seedController.dispose();
+    super.dispose();
   }
 
   void update(GameSettings value) {
@@ -99,6 +107,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: settings.devMode,
             onChanged: (value) => update(settings.copyWith(devMode: value)),
           ),
+          if (settings.devMode) ...[
+            const SizedBox(height: AppLayout.controlGap),
+            TextField(
+              controller: seedController,
+              decoration: const InputDecoration(
+                labelText: 'Seed',
+                hintText: 'ex: test-build-1',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                update(settings.copyWith(seedString: value));
+              },
+            ),
+          ],
           const SizedBox(height: AppLayout.sectionGap),
           Text('Level-up', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppLayout.controlGap),

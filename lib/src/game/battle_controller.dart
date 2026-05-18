@@ -17,15 +17,20 @@ import 'targeting.dart';
 import 'wave_generator.dart';
 
 class BattleController implements BattleActions {
-  BattleController({List<Fighter>? heroes, int gems = 0}) {
+  BattleController({List<Fighter>? heroes, int gems = 0, this.seedString = ''}) {
     resetGame(heroes: heroes, gems: gems);
   }
 
-  BattleController.fromJson(Map<String, dynamic> json) {
+  BattleController.fromJson(Map<String, dynamic> json, {String seedString = ''})
+    : seedString = seedString.isEmpty
+          ? (json['seedString'] as String? ?? '')
+          : seedString {
+    _resetRandom();
     loadFromJson(json);
   }
 
-  final Random random = Random();
+  String seedString;
+  late Random random;
   late ThemedWaveGenerator waveGenerator;
   late Team heroes;
   late WaveInfo waveInfo;
@@ -82,6 +87,7 @@ class BattleController implements BattleActions {
   bool get hasInjuredHero => heroes.alive.any((hero) => hero.hp < hero.maxHp);
 
   void resetGame({List<Fighter>? heroes, int? gems}) {
+    _resetRandom();
     waveGenerator = ThemedWaveGenerator(random);
     this.heroes = Team(
       'Base Team',
@@ -122,6 +128,7 @@ class BattleController implements BattleActions {
       'healingPotionStock': healingPotionStock,
       'teamPotionStock': teamPotionStock,
       'specialPotionStock': specialPotionStock,
+      'seedString': seedString,
       'gameOver': gameOver,
       'merchantAvailable': merchantAvailable,
       'resumeAutoAttackAfterMerchant': resumeAutoAttackAfterMerchant,
@@ -191,6 +198,19 @@ class BattleController implements BattleActions {
     log
       ..clear()
       ..addAll((json['log'] as List<dynamic>? ?? const []).whereType<String>());
+  }
+
+  void _resetRandom() {
+    random = seedString.isEmpty ? Random() : Random(_seedFromString(seedString));
+  }
+
+  int _seedFromString(String value) {
+    var hash = 0x811c9dc5;
+    for (final unit in value.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0x7fffffff;
+    }
+    return hash;
   }
 
   List<Fighter> _fighterListFromJson(Object? raw) {
