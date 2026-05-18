@@ -73,6 +73,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) =>
                 update(settings.copyWith(autoUseSkills: value)),
           ),
+          SwitchListTile(
+            title: const Text('Achat auto soins'),
+            subtitle: const Text(
+              'Le marchand stocke des soins avec l or disponible.',
+            ),
+            value: settings.autoBuyHealingItems,
+            onChanged: (value) =>
+                update(settings.copyWith(autoBuyHealingItems: value)),
+          ),
+          SwitchListTile(
+            title: const Text('Soins auto'),
+            subtitle: const Text(
+              'Les potions stockees sont utilisees a 25% PV ou moins.',
+            ),
+            value: settings.autoUseHealingItems,
+            onChanged: (value) =>
+                update(settings.copyWith(autoUseHealingItems: value)),
+          ),
           const SizedBox(height: AppLayout.sectionGap),
           Text('Level-up', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppLayout.controlGap),

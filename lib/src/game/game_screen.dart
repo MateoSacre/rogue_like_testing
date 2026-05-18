@@ -255,13 +255,7 @@ class _GameScreenState extends State<GameScreen> {
             label: const Text('Restart run'),
           )
         else if (battle.merchantAvailable)
-          compact
-              ? FilledButton.icon(
-                  onPressed: _openMerchantPage,
-                  icon: const Icon(Icons.storefront),
-                  label: const Text('Open shop'),
-                )
-              : _merchantPanel()
+          compact ? _compactMerchantActions() : _merchantPanel()
         else ...[
           Text('Hero action', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppLayout.controlGap),
@@ -356,6 +350,9 @@ class _GameScreenState extends State<GameScreen> {
                           pause: _mobAttackDelay,
                           notify: _refresh,
                           useSkills: widget.settings.autoUseSkills,
+                          autoBuyHealingItems:
+                              widget.settings.autoBuyHealingItems,
+                          useHealingItems: widget.settings.autoUseHealingItems,
                           levelUpMode: widget.settings.levelUpMode,
                         );
                         await _resolvePendingLevelUps();
@@ -377,6 +374,25 @@ class _GameScreenState extends State<GameScreen> {
             ],
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _compactMerchantActions() {
+    return Wrap(
+      spacing: AppLayout.controlGap,
+      runSpacing: AppLayout.controlGap,
+      children: [
+        FilledButton.icon(
+          onPressed: _openMerchantPage,
+          icon: const Icon(Icons.storefront),
+          label: const Text('Open shop'),
+        ),
+        OutlinedButton.icon(
+          onPressed: _continueAfterMerchant,
+          icon: const Icon(Icons.skip_next),
+          label: const Text('Skip shop'),
+        ),
       ],
     );
   }
@@ -599,7 +615,7 @@ class _GameScreenState extends State<GameScreen> {
         ),
         const Divider(height: AppLayout.panelGap),
         OutlinedButton.icon(
-          onPressed: onContinue ?? () => update(battle.continueAfterMerchant),
+          onPressed: onContinue ?? () => _continueAfterMerchant(),
           icon: const Icon(Icons.arrow_forward),
           label: const Text('Continue'),
         ),
@@ -622,7 +638,7 @@ class _GameScreenState extends State<GameScreen> {
                       _merchantContent(
                         onChanged: () => setPageState(() {}),
                         onContinue: () {
-                          update(battle.continueAfterMerchant);
+                          _continueAfterMerchant();
                           Navigator.of(context).pop();
                         },
                       ),
@@ -635,6 +651,27 @@ class _GameScreenState extends State<GameScreen> {
         },
       ),
     );
+    _refresh();
+  }
+
+  Future<void> _continueAfterMerchant() async {
+    final shouldResumeAuto = battle.resumeAutoAttackAfterMerchant;
+    update(() {
+      if (widget.settings.autoBuyHealingItems) {
+        battle.autoBuyHealingItems();
+      }
+      battle.continueAfterMerchant();
+    });
+    if (!shouldResumeAuto || !mounted) return;
+    await battle.performAutoAttack(
+      pause: _mobAttackDelay,
+      notify: _refresh,
+      useSkills: widget.settings.autoUseSkills,
+      autoBuyHealingItems: widget.settings.autoBuyHealingItems,
+      useHealingItems: widget.settings.autoUseHealingItems,
+      levelUpMode: widget.settings.levelUpMode,
+    );
+    await _resolvePendingLevelUps();
     _refresh();
   }
 

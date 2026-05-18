@@ -46,6 +46,7 @@ class BattleController implements BattleActions {
   int specialPotionStock = 0;
   bool gameOver = false;
   bool merchantAvailable = false;
+  bool resumeAutoAttackAfterMerchant = false;
   bool isAnimating = false;
   bool autoAttackEnabled = false;
   bool isAutoAttackRunning = false;
@@ -95,6 +96,7 @@ class BattleController implements BattleActions {
     specialPotionStock = 0;
     gameOver = false;
     merchantAvailable = false;
+    resumeAutoAttackAfterMerchant = false;
     actedHeroes.clear();
     rewardedMobs.clear();
     selectedHero = null;
@@ -120,6 +122,7 @@ class BattleController implements BattleActions {
       'specialPotionStock': specialPotionStock,
       'gameOver': gameOver,
       'merchantAvailable': merchantAvailable,
+      'resumeAutoAttackAfterMerchant': resumeAutoAttackAfterMerchant,
       'category': waveInfo.category.name,
       'finalWaveInTheme': waveInfo.finalWaveInTheme,
       'wavesRemainingInTheme': waveGenerator.wavesRemainingInTheme,
@@ -171,6 +174,8 @@ class BattleController implements BattleActions {
     specialPotionStock = json['specialPotionStock'] as int? ?? 0;
     gameOver = json['gameOver'] == true;
     merchantAvailable = savedMerchantAvailable;
+    resumeAutoAttackAfterMerchant =
+        json['resumeAutoAttackAfterMerchant'] == true;
     actedHeroes.clear();
     rewardedMobs.clear();
     selectedHero = availableHeroes.firstOrNull;
@@ -327,6 +332,8 @@ class BattleController implements BattleActions {
     required Future<void> Function() pause,
     required void Function() notify,
     required bool useSkills,
+    required bool autoBuyHealingItems,
+    required bool useHealingItems,
     required LevelUpMode levelUpMode,
   }) async {
     currentLevelUpMode = levelUpMode;
@@ -337,7 +344,12 @@ class BattleController implements BattleActions {
     try {
       while (autoAttackEnabled && !gameOver) {
         if (merchantAvailable) {
-          autoAttackEnabled = false;
+          if (autoBuyHealingItems) {
+            this.autoBuyHealingItems();
+            continueAfterMerchant();
+            notify();
+            continue;
+          }
           break;
         }
 
@@ -374,6 +386,9 @@ class BattleController implements BattleActions {
         if (!autoAttackEnabled || gameOver) break;
 
         applyEffectsOnTurnStart(hero);
+        if (useHealingItems) {
+          useAutoHealingItems();
+        }
         if (hero.isAlive && target.isAlive) {
           _performAutoHeroAction(
             hero,
@@ -387,6 +402,9 @@ class BattleController implements BattleActions {
           autoAttackEnabled = false;
         }
         selectedTarget = null;
+        if (useHealingItems) {
+          useAutoHealingItems();
+        }
         notify();
       }
     } finally {
@@ -407,6 +425,7 @@ class BattleController implements BattleActions {
 
   void stopAutoAttack() {
     autoAttackEnabled = false;
+    resumeAutoAttackAfterMerchant = false;
   }
 
   @override
@@ -569,6 +588,30 @@ class BattleController implements BattleActions {
     }
     _startHeroPhase();
     notify();
+  }
+
+  int useAutoHealingItems() {
+    var used = 0;
+    if (_shouldUseTeamPotionAutomatically()) {
+      if (useTeamPotion()) used++;
+    }
+    for (final hero in heroes.alive) {
+      if (healingPotionStock <= 0) break;
+      if (_needsAutoHealing(hero) && useHealingPotion(hero)) {
+        used++;
+      }
+    }
+    return used;
+  }
+
+  bool _shouldUseTeamPotionAutomatically() {
+    final aliveHeroes = heroes.alive;
+    if (aliveHeroes.length <= 1 || teamPotionStock <= 0) return false;
+    return aliveHeroes.every(_needsAutoHealing);
+  }
+
+  bool _needsAutoHealing(Fighter hero) {
+    return hero.isAlive && hero.hp <= hero.maxHp * .25 && hero.hp < hero.maxHp;
   }
 
   void gainXp(Fighter hero, int xp, LevelUpMode levelUpMode) {
@@ -764,7 +807,7 @@ class BattleController implements BattleActions {
     if (clearedBossWave &&
         random.nextInt(GameBalance.merchantChanceDivisor) == 0) {
       merchantAvailable = true;
-      autoAttackEnabled = false;
+      resumeAutoAttackAfterMerchant = autoAttackEnabled;
       selectedHero = null;
       selectedTarget = null;
       addLog('A merchant appears');
@@ -776,7 +819,28 @@ class BattleController implements BattleActions {
   void continueAfterMerchant() {
     if (!merchantAvailable) return;
     merchantAvailable = false;
+    autoAttackEnabled = resumeAutoAttackAfterMerchant;
+    resumeAutoAttackAfterMerchant = false;
     _startNextWave();
+  }
+
+  int autoBuyHealingItems() {
+    if (!merchantAvailable) return 0;
+    var bought = 0;
+    if (_shouldBuyTeamPotionAutomatically() && buyTeamPotionStock()) {
+      bought++;
+    }
+    while (buySinglePotionStock()) {
+      bought++;
+    }
+    return bought;
+  }
+
+  bool _shouldBuyTeamPotionAutomatically() {
+    final aliveHeroes = heroes.alive;
+    return aliveHeroes.length > 1 &&
+        aliveHeroes.every((hero) => hero.hp < hero.maxHp) &&
+        gold >= GameBalance.teamPotionCost;
   }
 
   bool buySinglePotion(Fighter hero) {

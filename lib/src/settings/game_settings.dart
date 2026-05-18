@@ -28,24 +28,32 @@ class GameSettings {
     this.darkTheme = false,
     this.autoAttackSpeed = AutoAttackSpeed.normal,
     this.autoUseSkills = false,
+    this.autoBuyHealingItems = false,
+    this.autoUseHealingItems = false,
     this.levelUpMode = LevelUpMode.manual,
   });
 
   final bool darkTheme;
   final AutoAttackSpeed autoAttackSpeed;
   final bool autoUseSkills;
+  final bool autoBuyHealingItems;
+  final bool autoUseHealingItems;
   final LevelUpMode levelUpMode;
 
   GameSettings copyWith({
     bool? darkTheme,
     AutoAttackSpeed? autoAttackSpeed,
     bool? autoUseSkills,
+    bool? autoBuyHealingItems,
+    bool? autoUseHealingItems,
     LevelUpMode? levelUpMode,
   }) {
     return GameSettings(
       darkTheme: darkTheme ?? this.darkTheme,
       autoAttackSpeed: autoAttackSpeed ?? this.autoAttackSpeed,
       autoUseSkills: autoUseSkills ?? this.autoUseSkills,
+      autoBuyHealingItems: autoBuyHealingItems ?? this.autoBuyHealingItems,
+      autoUseHealingItems: autoUseHealingItems ?? this.autoUseHealingItems,
       levelUpMode: levelUpMode ?? this.levelUpMode,
     );
   }
@@ -55,6 +63,8 @@ class GameSettings {
       'darkTheme': darkTheme,
       'autoAttackSpeed': autoAttackSpeed.name,
       'autoUseSkills': autoUseSkills,
+      'autoBuyHealingItems': autoBuyHealingItems,
+      'autoUseHealingItems': autoUseHealingItems,
       'levelUpMode': levelUpMode.name,
     };
   }
@@ -68,6 +78,8 @@ class GameSettings {
         orElse: () => AutoAttackSpeed.normal,
       ),
       autoUseSkills: json['autoUseSkills'] == true,
+      autoBuyHealingItems: json['autoBuyHealingItems'] == true,
+      autoUseHealingItems: json['autoUseHealingItems'] == true,
       levelUpMode: LevelUpMode.values.firstWhere(
         (mode) => mode.name == json['levelUpMode'],
         orElse: () => LevelUpMode.manual,
