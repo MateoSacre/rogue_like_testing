@@ -95,12 +95,22 @@ class FighterCard extends StatelessWidget {
                               'HP ${fmt(fighter.hp)}/${fmt(fighter.maxHp)}  ATK ${fmt(fighter.attackPower)}  DEF ${fmt(fighter.defence)}',
                             ),
                             if (fighter.isHero)
-                              Text(
-                                'LVL ${fighter.level}  XP ${fighter.xp}/${fighter.xpCap}',
+                              _CompactProgressLine(
+                                label:
+                                    'LVL ${fighter.level}',
+                                value: fighter.xpCap == 0
+                                    ? 1
+                                    : fighter.xp / fighter.xpCap,
+                                color: AppColors.xpProgress,
                               ),
                             if (skill != null)
-                              Text(
-                                '${skill.name} ${skill.charge}/${skill.maxCharge}',
+                              _CompactProgressLine(
+                                label:
+                                    '${skill.name} ${skill.charge}/${skill.maxCharge}',
+                                value: skill.maxCharge == 0
+                                    ? 1
+                                    : skill.charge / skill.maxCharge,
+                                color: AppColors.skillCharge,
                               ),
                             if (fighter.statusLabel.isNotEmpty)
                               Text(
@@ -230,6 +240,42 @@ class _XpBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CompactProgressLine extends StatelessWidget {
+  const _CompactProgressLine({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final double value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          const SizedBox(width: AppLayout.tinyGap),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppLayout.progressRadius),
+              child: LinearProgressIndicator(
+                minHeight: 4,
+                value: value.clamp(0, 1).toDouble(),
+                backgroundColor: AppColors.progressTrack(context),
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

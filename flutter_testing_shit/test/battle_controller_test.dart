@@ -244,7 +244,7 @@ void main() {
       await battle.performSelectedAction(
         pause: () async {},
         notify: () {},
-        levelUpMode: LevelUpMode.lowestRatio,
+        levelUpMode: LevelUpMode.balanced,
       );
 
       expect(highHpMob.hp, lessThan(highHpMob.maxHp));
