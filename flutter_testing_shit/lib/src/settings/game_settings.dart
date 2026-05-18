@@ -31,6 +31,7 @@ class GameSettings {
     this.autoBuyHealingItems = false,
     this.autoUseHealingItems = false,
     this.devMode = false,
+    this.seedString = '',
     this.levelUpMode = LevelUpMode.manual,
   });
 
@@ -40,6 +41,7 @@ class GameSettings {
   final bool autoBuyHealingItems;
   final bool autoUseHealingItems;
   final bool devMode;
+  final String seedString;
   final LevelUpMode levelUpMode;
 
   GameSettings copyWith({
@@ -49,6 +51,7 @@ class GameSettings {
     bool? autoBuyHealingItems,
     bool? autoUseHealingItems,
     bool? devMode,
+    String? seedString,
     LevelUpMode? levelUpMode,
   }) {
     return GameSettings(
@@ -58,6 +61,7 @@ class GameSettings {
       autoBuyHealingItems: autoBuyHealingItems ?? this.autoBuyHealingItems,
       autoUseHealingItems: autoUseHealingItems ?? this.autoUseHealingItems,
       devMode: devMode ?? this.devMode,
+      seedString: seedString ?? this.seedString,
       levelUpMode: levelUpMode ?? this.levelUpMode,
     );
   }
@@ -70,6 +74,7 @@ class GameSettings {
       'autoBuyHealingItems': autoBuyHealingItems,
       'autoUseHealingItems': autoUseHealingItems,
       'devMode': devMode,
+      'seedString': seedString,
       'levelUpMode': levelUpMode.name,
     };
   }
@@ -86,6 +91,7 @@ class GameSettings {
       autoBuyHealingItems: json['autoBuyHealingItems'] == true,
       autoUseHealingItems: json['autoUseHealingItems'] == true,
       devMode: json['devMode'] == true,
+      seedString: json['seedString'] as String? ?? '',
       levelUpMode: LevelUpMode.values.firstWhere(
         (mode) => mode.name == json['levelUpMode'],
         orElse: () => LevelUpMode.manual,

@@ -62,8 +62,12 @@ class _GameScreenState extends State<GameScreen> {
         ? BattleController(
             heroes: widget.initialHeroes,
             gems: widget.progress.gems,
+            seedString: settings.seedString,
           )
-        : BattleController.fromJson(widget.initialBattleJson!);
+        : BattleController.fromJson(
+            widget.initialBattleJson!,
+            seedString: settings.seedString,
+          );
     battle.devMode = settings.devMode;
     _syncProgressGems();
   }
@@ -151,6 +155,7 @@ class _GameScreenState extends State<GameScreen> {
             onChanged: (value) {
               setState(() => settings = value);
               battle.devMode = value.devMode;
+              battle.seedString = value.seedString;
               widget.onSettingsChanged(value);
               SaveService.save(
                 settings: value,
