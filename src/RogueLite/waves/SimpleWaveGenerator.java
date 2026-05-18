@@ -1,6 +1,7 @@
 package RogueLite.waves;
 
 import RogueLite.Debug;
+import RogueLite.GameRandom;
 import RogueLite.teams.MobTeam;
 import RogueLite.teams.Team;
 import RogueLite.characters.mobs.Mob;
@@ -13,13 +14,12 @@ import java.util.Random;
 
 public class SimpleWaveGenerator {
 
-  private static final long DEFAULT_SEED = 0L;
   protected static final int MAX_WAVE_SIZE = 6;
 
   protected final Random random;
 
   public SimpleWaveGenerator() {
-    this.random = new Random(DEFAULT_SEED);
+    this(GameRandom.shared());
   }
 
   public SimpleWaveGenerator(Random random) {

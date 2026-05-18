@@ -20,12 +20,12 @@ public class Game {
   private static final int THEME_LENGTH = 5;
 
   public static void main(String[] args) {
-    final long seed = OffsetDateTime.now().toEpochSecond();
+    final long seed = Debug.TEST_MODE ? 0L : OffsetDateTime.now().toEpochSecond();
+    GameRandom.setSeed(seed);
     Debug.log("Game", "Seed=" + seed);
 
     HeroTeam baseTeam = getBaseTeam();
-    ThemedWaveGenerator waveGenerator =
-        Debug.TEST_MODE ? new ThemedWaveGenerator() : new ThemedWaveGenerator(seed);
+    ThemedWaveGenerator waveGenerator = new ThemedWaveGenerator();
     int waveCounter = 1;
     while (!baseTeam.isDefeated()) {
       int themeWaveIndex = ((waveCounter - 1) % THEME_LENGTH) + 1;

@@ -1,0 +1,77 @@
+import '../theme/app_durations.dart';
+
+enum AutoAttackSpeed {
+  instant('Instantane', AppDurations.autoAttackInstant),
+  fast('Rapide', AppDurations.autoAttackFast),
+  normal('Normal', AppDurations.autoAttackNormal),
+  slow('Lente', AppDurations.autoAttackSlow);
+
+  const AutoAttackSpeed(this.label, this.duration);
+
+  final String label;
+  final Duration duration;
+}
+
+enum LevelUpMode {
+  manual('Choix manuel'),
+  random('Aleatoire'),
+  strongest('Stat la plus forte'),
+  balanced('Equilibrer le profil');
+
+  const LevelUpMode(this.label);
+
+  final String label;
+}
+
+class GameSettings {
+  const GameSettings({
+    this.darkTheme = false,
+    this.autoAttackSpeed = AutoAttackSpeed.normal,
+    this.autoUseSkills = false,
+    this.levelUpMode = LevelUpMode.manual,
+  });
+
+  final bool darkTheme;
+  final AutoAttackSpeed autoAttackSpeed;
+  final bool autoUseSkills;
+  final LevelUpMode levelUpMode;
+
+  GameSettings copyWith({
+    bool? darkTheme,
+    AutoAttackSpeed? autoAttackSpeed,
+    bool? autoUseSkills,
+    LevelUpMode? levelUpMode,
+  }) {
+    return GameSettings(
+      darkTheme: darkTheme ?? this.darkTheme,
+      autoAttackSpeed: autoAttackSpeed ?? this.autoAttackSpeed,
+      autoUseSkills: autoUseSkills ?? this.autoUseSkills,
+      levelUpMode: levelUpMode ?? this.levelUpMode,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'darkTheme': darkTheme,
+      'autoAttackSpeed': autoAttackSpeed.name,
+      'autoUseSkills': autoUseSkills,
+      'levelUpMode': levelUpMode.name,
+    };
+  }
+
+  static GameSettings fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const GameSettings();
+    return GameSettings(
+      darkTheme: json['darkTheme'] == true,
+      autoAttackSpeed: AutoAttackSpeed.values.firstWhere(
+        (speed) => speed.name == json['autoAttackSpeed'],
+        orElse: () => AutoAttackSpeed.normal,
+      ),
+      autoUseSkills: json['autoUseSkills'] == true,
+      levelUpMode: LevelUpMode.values.firstWhere(
+        (mode) => mode.name == json['levelUpMode'],
+        orElse: () => LevelUpMode.manual,
+      ),
+    );
+  }
+}
