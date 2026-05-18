@@ -30,6 +30,7 @@ class GameSettings {
     this.autoUseSkills = false,
     this.autoBuyHealingItems = false,
     this.autoUseHealingItems = false,
+    this.devMode = false,
     this.levelUpMode = LevelUpMode.manual,
   });
 
@@ -38,6 +39,7 @@ class GameSettings {
   final bool autoUseSkills;
   final bool autoBuyHealingItems;
   final bool autoUseHealingItems;
+  final bool devMode;
   final LevelUpMode levelUpMode;
 
   GameSettings copyWith({
@@ -46,6 +48,7 @@ class GameSettings {
     bool? autoUseSkills,
     bool? autoBuyHealingItems,
     bool? autoUseHealingItems,
+    bool? devMode,
     LevelUpMode? levelUpMode,
   }) {
     return GameSettings(
@@ -54,6 +57,7 @@ class GameSettings {
       autoUseSkills: autoUseSkills ?? this.autoUseSkills,
       autoBuyHealingItems: autoBuyHealingItems ?? this.autoBuyHealingItems,
       autoUseHealingItems: autoUseHealingItems ?? this.autoUseHealingItems,
+      devMode: devMode ?? this.devMode,
       levelUpMode: levelUpMode ?? this.levelUpMode,
     );
   }
@@ -65,6 +69,7 @@ class GameSettings {
       'autoUseSkills': autoUseSkills,
       'autoBuyHealingItems': autoBuyHealingItems,
       'autoUseHealingItems': autoUseHealingItems,
+      'devMode': devMode,
       'levelUpMode': levelUpMode.name,
     };
   }
@@ -80,6 +85,7 @@ class GameSettings {
       autoUseSkills: json['autoUseSkills'] == true,
       autoBuyHealingItems: json['autoBuyHealingItems'] == true,
       autoUseHealingItems: json['autoUseHealingItems'] == true,
+      devMode: json['devMode'] == true,
       levelUpMode: LevelUpMode.values.firstWhere(
         (mode) => mode.name == json['levelUpMode'],
         orElse: () => LevelUpMode.manual,
