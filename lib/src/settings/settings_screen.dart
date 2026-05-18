@@ -7,11 +7,13 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     required this.settings,
     required this.onChanged,
+    this.onResetProgress,
     super.key,
   });
 
   final GameSettings settings;
   final ValueChanged<GameSettings> onChanged;
+  final Future<void> Function()? onResetProgress;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -85,8 +87,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
               update(settings.copyWith(levelUpMode: selection.first));
             },
           ),
+          if (widget.onResetProgress != null) ...[
+            const SizedBox(height: AppLayout.panelGap),
+            const Divider(),
+            const SizedBox(height: AppLayout.sectionGap),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: _confirmResetProgress,
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Reset progression'),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _confirmResetProgress() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reset progression'),
+          content: const Text(
+            'Toutes les gemmes, heros debloques, ameliorations et runs sauvegardees seront supprimes.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Reset'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+    await widget.onResetProgress?.call();
+    if (mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 }

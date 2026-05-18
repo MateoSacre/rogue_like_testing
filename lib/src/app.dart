@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'game/game_screen.dart';
 import 'persistence/save_service.dart';
+import 'progression/player_progress.dart';
 import 'settings/game_settings.dart';
+import 'start/start_screen.dart';
 import 'theme/app_colors.dart';
 
 class RogueLiteApp extends StatefulWidget {
@@ -14,6 +15,7 @@ class RogueLiteApp extends StatefulWidget {
 
 class _RogueLiteAppState extends State<RogueLiteApp> {
   GameSettings settings = const GameSettings();
+  PlayerProgress progress = PlayerProgress.initial();
   Map<String, dynamic>? battleJson;
   bool loaded = false;
 
@@ -30,6 +32,22 @@ class _RogueLiteAppState extends State<RogueLiteApp> {
       settings = GameSettings.fromJson(
         save?['settings'] as Map<String, dynamic>?,
       );
+      progress = PlayerProgress.fromJson(
+        save?['progression'] as Map<String, dynamic>?,
+      );
+      if (save?['progression'] == null) {
+        final oldBattle = save?['battle'] as Map<String, dynamic>?;
+        progress.gems = oldBattle?['gems'] as int? ?? 0;
+        final oldHeroes = oldBattle?['heroes'] as List<dynamic>? ?? const [];
+        for (final hero in oldHeroes.whereType<Map<String, dynamic>>()) {
+          final name = hero['name'] as String?;
+          if (name == null) continue;
+          progress.unlockedHeroes.add(name);
+          progress.heroStats[name] = PlayerProgress.balancedPointsForLevel(
+            hero['level'] as int? ?? 1,
+          );
+        }
+      }
       battleJson = save?['battle'] as Map<String, dynamic>?;
       loaded = true;
     });
@@ -37,6 +55,23 @@ class _RogueLiteAppState extends State<RogueLiteApp> {
 
   void updateSettings(GameSettings value) {
     setState(() => settings = value);
+  }
+
+  void updateProgress(PlayerProgress value) {
+    setState(() => progress = value);
+  }
+
+  void updateBattleJson(Map<String, dynamic>? value) {
+    setState(() => battleJson = value);
+  }
+
+  Future<void> resetProgress() async {
+    final nextProgress = PlayerProgress.initial();
+    setState(() {
+      progress = nextProgress;
+      battleJson = null;
+    });
+    await SaveService.save(settings: settings, progress: nextProgress);
   }
 
   @override
@@ -62,10 +97,14 @@ class _RogueLiteAppState extends State<RogueLiteApp> {
       ),
       themeMode: settings.darkTheme ? ThemeMode.dark : ThemeMode.light,
       home: loaded
-          ? GameScreen(
+          ? StartScreen(
               settings: settings,
-              initialBattleJson: battleJson,
+              progress: progress,
+              battleJson: battleJson,
               onSettingsChanged: updateSettings,
+              onProgressChanged: updateProgress,
+              onBattleSaved: updateBattleJson,
+              onResetProgress: resetProgress,
             )
           : const Scaffold(body: Center(child: CircularProgressIndicator())),
     );

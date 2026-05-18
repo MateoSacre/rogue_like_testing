@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../game/battle_controller.dart';
+import '../progression/player_progress.dart';
 import '../settings/game_settings.dart';
 
 class SaveService {
@@ -23,9 +24,18 @@ class SaveService {
 
   static Future<void> save({
     required GameSettings settings,
-    required BattleController battle,
+    required PlayerProgress progress,
+    BattleController? battle,
+    Map<String, dynamic>? battleJson,
   }) async {
-    final payload = {'settings': settings.toJson(), 'battle': battle.toJson()};
+    final payload = <String, dynamic>{
+      'settings': settings.toJson(),
+      'progression': progress.toJson(),
+    };
+    final savedBattle = battle?.toJson() ?? battleJson;
+    if (savedBattle != null) {
+      payload['battle'] = savedBattle;
+    }
     await _file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(payload),
     );
