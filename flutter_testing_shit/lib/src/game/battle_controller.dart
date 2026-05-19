@@ -8,6 +8,7 @@ import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/level_up_stat.dart';
 import '../models/skill.dart';
+import '../models/status_effect.dart';
 import '../models/team.dart';
 import '../models/wave_info.dart';
 import '../settings/game_settings.dart';
@@ -17,7 +18,11 @@ import 'targeting.dart';
 import 'wave_generator.dart';
 
 class BattleController implements BattleActions {
-  BattleController({List<Fighter>? heroes, int gems = 0, this.seedString = ''}) {
+  BattleController({
+    List<Fighter>? heroes,
+    int gems = 0,
+    this.seedString = '',
+  }) {
     resetGame(heroes: heroes, gems: gems);
   }
 
@@ -85,6 +90,8 @@ class BattleController implements BattleActions {
   bool get canBuySpecialBarUpgrade => gold >= GameBalance.specialBarUpgradeCost;
 
   bool get hasInjuredHero => heroes.alive.any((hero) => hero.hp < hero.maxHp);
+
+  List<Fighter> get allFighters => [...heroes.members, ...mobs.members];
 
   void resetGame({List<Fighter>? heroes, int? gems}) {
     _resetRandom();
@@ -201,7 +208,9 @@ class BattleController implements BattleActions {
   }
 
   void _resetRandom() {
-    random = seedString.isEmpty ? Random() : Random(_seedFromString(seedString));
+    random = seedString.isEmpty
+        ? Random()
+        : Random(_seedFromString(seedString));
   }
 
   int _seedFromString(String value) {
@@ -448,6 +457,36 @@ class BattleController implements BattleActions {
   void stopAutoAttack() {
     autoAttackEnabled = false;
     resumeAutoAttackAfterMerchant = false;
+  }
+
+  void devAddGold([int amount = 9999]) {
+    if (!devMode || amount <= 0) return;
+    gold += amount;
+    addLog('Dev mode: +$amount gold');
+  }
+
+  void devAddGems([int amount = 999]) {
+    if (!devMode || amount <= 0) return;
+    gems += amount;
+    addLog('Dev mode: +$amount gems');
+  }
+
+  void devApplyEffect(Fighter target, StatusEffect effect) {
+    if (!devMode || !allFighters.contains(target)) return;
+    target.effects.removeWhere((current) => current.name == effect.name);
+    target.effects.add(effect.copy());
+    addLog('Dev mode: ${effect.name} applied to ${target.name}');
+  }
+
+  void devOpenMerchant() {
+    if (!devMode || gameOver || isAnimating) return;
+    stopAutoAttack();
+    merchantAvailable = true;
+    selectedHero = null;
+    selectedTarget = null;
+    activeMob = null;
+    activeMobTarget = null;
+    addLog('Dev mode: merchant opened');
   }
 
   @override

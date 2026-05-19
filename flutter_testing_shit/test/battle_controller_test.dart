@@ -265,5 +265,53 @@ void main() {
       battle.toggleEnemyTarget(mob);
       expect(battle.selectedTarget, isNull);
     });
+
+    test('dev currency cheats only work in dev mode', () {
+      final battle = BattleController();
+
+      battle.devAddGold();
+      battle.devAddGems();
+      expect(battle.gold, 0);
+      expect(battle.gems, 0);
+
+      battle.devMode = true;
+      battle.devAddGold();
+      battle.devAddGems();
+
+      expect(battle.gold, 9999);
+      expect(battle.gems, 999);
+    });
+
+    test('dev effect cheat can apply effects to heroes and enemies', () {
+      final battle = BattleController()..devMode = true;
+      final hero = battle.heroes.members.first;
+      final mob = battle.mobs.members.first;
+      final effect = StatusEffect(
+        name: 'Heavy poison',
+        kind: EffectKind.recurrent,
+        duration: 5,
+        damage: 10,
+      );
+
+      battle.devApplyEffect(hero, effect);
+      battle.devApplyEffect(mob, effect);
+
+      expect(hero.effects.single.name, 'Heavy poison');
+      expect(mob.effects.single.damage, 10);
+    });
+
+    test('dev merchant cheat opens the merchant without auto attack', () {
+      final battle = BattleController()
+        ..devMode = true
+        ..autoAttackEnabled = true
+        ..resumeAutoAttackAfterMerchant = true;
+
+      battle.devOpenMerchant();
+
+      expect(battle.merchantAvailable, isTrue);
+      expect(battle.autoAttackEnabled, isFalse);
+      expect(battle.resumeAutoAttackAfterMerchant, isFalse);
+      expect(battle.selectedHero, isNull);
+    });
   });
 }

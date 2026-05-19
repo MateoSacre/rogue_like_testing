@@ -27,25 +27,22 @@ class ThemedWaveGenerator {
     final wave = <Fighter>[];
     var remainingValue = totalValue;
     var remainingSlots = GameBalance.maxWaveSize;
-    var index = 1;
 
     if (isFinal) {
       final hardMob = _selectMob(remainingValue, category, bossesAllowed: true);
       if (hardMob != null) {
-        wave.add(hardMob.build('$index-${hardMob.name}', random));
+        wave.add(hardMob.build(hardMob.name, random));
         remainingValue -= hardMob.value;
         remainingSlots--;
-        index++;
       }
     }
 
     while (remainingValue > 0 && remainingSlots > 0) {
       final mob = _selectMob(remainingValue, category, bossesAllowed: false);
       if (mob == null) break;
-      wave.add(mob.build('$index-${mob.name}', random));
+      wave.add(mob.build(mob.name, random));
       remainingValue -= mob.value;
       remainingSlots--;
-      index++;
     }
 
     wavesRemainingInTheme--;

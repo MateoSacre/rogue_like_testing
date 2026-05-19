@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/level_up_stat.dart';
+import '../models/status_effect.dart';
 import '../models/team.dart';
 import '../persistence/save_service.dart';
 import '../progression/player_progress.dart';
@@ -253,6 +254,12 @@ class _GameScreenState extends State<GameScreen> {
             height: compact ? AppLayout.compactGap : AppLayout.sectionGap,
           ),
         ],
+        if (settings.devMode) ...[
+          _devToolsPanel(compact: compact),
+          SizedBox(
+            height: compact ? AppLayout.compactGap : AppLayout.sectionGap,
+          ),
+        ],
         if (battle.gameOver)
           FilledButton.icon(
             onPressed: () => update(
@@ -404,6 +411,133 @@ class _GameScreenState extends State<GameScreen> {
         ),
       ],
     );
+  }
+
+  Widget _devToolsPanel({required bool compact}) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(AppLayout.borderRadius),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppLayout.controlGap),
+        child: Wrap(
+          spacing: AppLayout.controlGap,
+          runSpacing: AppLayout.controlGap,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              compact ? 'Dev' : 'Dev tools',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            OutlinedButton.icon(
+              onPressed: () => update(battle.devAddGold),
+              icon: const Icon(Icons.paid),
+              label: Text(compact ? '+Gold' : '+9999 gold'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => update(battle.devAddGems),
+              icon: const Icon(Icons.diamond),
+              label: Text(compact ? '+Gems' : '+999 gems'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _openDevEffectDialog,
+              icon: const Icon(Icons.bolt),
+              label: Text(compact ? 'Effect' : 'Apply effect'),
+            ),
+            OutlinedButton.icon(
+              onPressed: battle.gameOver || battle.isAnimating
+                  ? null
+                  : _devOpenMerchant,
+              icon: const Icon(Icons.storefront),
+              label: Text(compact ? 'Shop' : 'Open merchant'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _devOpenMerchant() async {
+    update(battle.devOpenMerchant);
+    await _openMerchantPage();
+  }
+
+  Future<void> _openDevEffectDialog() async {
+    final targets = battle.allFighters;
+    if (targets.isEmpty) return;
+    var selectedTarget = targets.first;
+    var selectedEffect = _devEffectPresets.first;
+
+    final applied = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Apply dev effect'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<_DevEffectPreset>(
+                      value: selectedEffect,
+                      decoration: const InputDecoration(labelText: 'Effect'),
+                      items: _devEffectPresets
+                          .map(
+                            (effect) => DropdownMenuItem(
+                              value: effect,
+                              child: Text(effect.label),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setDialogState(() => selectedEffect = value);
+                      },
+                    ),
+                    const SizedBox(height: AppLayout.sectionGap),
+                    DropdownButtonFormField<Fighter>(
+                      value: selectedTarget,
+                      decoration: const InputDecoration(labelText: 'Target'),
+                      items: targets
+                          .map(
+                            (fighter) => DropdownMenuItem(
+                              value: fighter,
+                              child: Text(
+                                '${fighter.isHero ? 'Ally' : 'Enemy'} - ${fighter.name}',
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setDialogState(() => selectedTarget = value);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  icon: const Icon(Icons.check),
+                  label: const Text('Apply'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (applied != true) return;
+    update(() => battle.devApplyEffect(selectedTarget, selectedEffect.build()));
   }
 
   Future<void> _resolvePendingLevelUps() async {
@@ -1061,5 +1195,71 @@ class _GameScreenState extends State<GameScreen> {
         child: card,
       );
     }).toList();
+  }
+}
+
+final List<_DevEffectPreset> _devEffectPresets = [
+  _DevEffectPreset(
+    label: 'Protect (+10 defence, 3 turns)',
+    name: 'Protect',
+    kind: EffectKind.buff,
+    duration: 3,
+    defenceBonus: 10,
+  ),
+  _DevEffectPreset(
+    label: 'Deep cut (5 damage, 5 turns)',
+    name: 'Deep cut',
+    kind: EffectKind.recurrent,
+    duration: 5,
+    damage: 5,
+  ),
+  _DevEffectPreset(
+    label: 'Poison Arrow (2 damage, 5 turns)',
+    name: 'Poison Arrow',
+    kind: EffectKind.recurrent,
+    duration: 5,
+    damage: 2,
+  ),
+  _DevEffectPreset(
+    label: 'Heavy poison (10 damage, 5 turns)',
+    name: 'Heavy poison',
+    kind: EffectKind.recurrent,
+    duration: 5,
+    damage: 10,
+  ),
+  _DevEffectPreset(
+    label: 'Iron Skin (+25 defence, 5 turns)',
+    name: 'Iron Skin',
+    kind: EffectKind.buff,
+    duration: 5,
+    defenceBonus: 25,
+  ),
+];
+
+class _DevEffectPreset {
+  const _DevEffectPreset({
+    required this.label,
+    required this.name,
+    required this.kind,
+    required this.duration,
+    this.damage = 0,
+    this.defenceBonus = 0,
+  });
+
+  final String label;
+  final String name;
+  final EffectKind kind;
+  final int duration;
+  final double damage;
+  final double defenceBonus;
+
+  StatusEffect build() {
+    return StatusEffect(
+      name: name,
+      kind: kind,
+      duration: duration,
+      damage: damage,
+      defenceBonus: defenceBonus,
+    );
   }
 }

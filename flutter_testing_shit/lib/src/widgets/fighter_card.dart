@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/skill.dart';
+import '../models/status_effect.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../utils/format.dart';
 
 part 'compact_progress_line.dart';
+
 part 'skill_charge_bar.dart';
+
+part 'status_effect_badges.dart';
+
 part 'xp_bar.dart';
 
 class FighterCard extends StatelessWidget {
@@ -64,11 +70,19 @@ class FighterCard extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     fighter.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: Theme.of(
                                       context,
                                     ).textTheme.labelLarge,
                                   ),
                                 ),
+                                if (fighter.effects.isNotEmpty) ...[
+                                  _StatusEffectBadges(
+                                    effects: fighter.effects,
+                                    compact: true,
+                                  ),
+                                ],
                                 if (pickable)
                                   const Icon(
                                     Icons.touch_app,
@@ -119,13 +133,6 @@ class FighterCard extends StatelessWidget {
                                     : skill.charge / skill.maxCharge,
                                 color: AppColors.skillCharge,
                               ),
-                            if (fighter.statusLabel.isNotEmpty)
-                              Text(
-                                fighter.statusLabel,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
                           ],
                         ),
                       ),
@@ -161,6 +168,13 @@ class FighterCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
+                    if (fighter.effects.isNotEmpty) ...[
+                      const SizedBox(width: AppLayout.compactGap),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 92),
+                        child: _StatusEffectBadges(effects: fighter.effects),
+                      ),
+                    ],
                     if (pickable)
                       const Icon(Icons.touch_app, size: AppLayout.iconSmall),
                   ],
@@ -201,13 +215,6 @@ class FighterCard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: _SkillChargeBar(skill: skill),
-                  ),
-                if (fighter.statusLabel.isNotEmpty)
-                  Text(
-                    fighter.statusLabel,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
               ],
             ),
