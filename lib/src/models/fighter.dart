@@ -66,8 +66,33 @@ class Fighter {
     return cap.round();
   }
 
+  int getXpForLevel(int level) {
+    var cap = GameBalance.baseXpCap;
+
+    for (var i = 1; i < level; i++) {
+      cap *=
+          GameBalance.xpCapBaseMultiplier +
+          GameBalance.xpCapCurveMultiplier *
+              exp(-GameBalance.xpCapSlopeModifier * i);
+    }
+
+    return cap.round();
+  }
+
+  int getXpForCurrentLevel() {
+    var cap = GameBalance.baseXpCap;
+
+    for (var i = 1; i < level; i++) {
+      cap *=
+          GameBalance.xpCapBaseMultiplier +
+          GameBalance.xpCapCurveMultiplier *
+              exp(-GameBalance.xpCapSlopeModifier * i);
+    }
+    return cap.round();
+  }
+
   Fighter copy({String? renamed}) {
-    return Fighter(
+    Fighter newFighter = Fighter(
       name: renamed ?? name,
       maxHp: maxHp,
       attackPower: attackPower,
@@ -78,6 +103,11 @@ class Fighter {
       isBoss: isBoss,
       aiType: aiType,
     );
+    if (isHero) {
+      newFighter.xp = xp;
+      newFighter.level = level;
+    }
+    return newFighter;
   }
 
   Map<String, dynamic> toJson() {

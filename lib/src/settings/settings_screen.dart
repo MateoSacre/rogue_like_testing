@@ -41,6 +41,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     widget.onChanged(value);
   }
 
+  List<AutoAttackSpeed> get _availableAutoAttackSpeeds {
+    if (settings.devMode) return AutoAttackSpeed.values;
+    return AutoAttackSpeed.values
+        .where((speed) => speed != AutoAttackSpeed.instant)
+        .toList();
+  }
+
+  GameSettings _withDevMode(bool enabled) {
+    var next = settings.copyWith(devMode: enabled);
+    if (!enabled && next.autoAttackSpeed == AutoAttackSpeed.instant) {
+      next = next.copyWith(autoAttackSpeed: AutoAttackSpeed.normal);
+    }
+    return next;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -60,13 +75,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: AppLayout.controlGap),
           SegmentedButton<AutoAttackSpeed>(
-            segments: AutoAttackSpeed.values
+            segments: _availableAutoAttackSpeeds
                 .map(
                   (speed) =>
                       ButtonSegment(value: speed, label: Text(speed.label)),
                 )
                 .toList(),
-            selected: {settings.autoAttackSpeed},
+            selected: {
+              _availableAutoAttackSpeeds.contains(settings.autoAttackSpeed)
+                  ? settings.autoAttackSpeed
+                  : AutoAttackSpeed.normal,
+            },
             onSelectionChanged: (selection) {
               update(settings.copyWith(autoAttackSpeed: selection.first));
             },
@@ -105,9 +124,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'Affiche progressivement des informations de debug.',
             ),
             value: settings.devMode,
-            onChanged: (value) => update(settings.copyWith(devMode: value)),
+            onChanged: (value) => update(_withDevMode(value)),
           ),
           if (settings.devMode) ...[
+            const SizedBox(height: AppLayout.controlGap),
+            SwitchListTile(
+              title: const Text('Auto restart apres defaite'),
+              subtitle: const Text(
+                'Relance automatiquement une run quand l equipe tombe.',
+              ),
+              value: settings.devAutoRestartOnDefeat,
+              onChanged: (value) =>
+                  update(settings.copyWith(devAutoRestartOnDefeat: value)),
+            ),
             const SizedBox(height: AppLayout.controlGap),
             TextField(
               controller: seedController,

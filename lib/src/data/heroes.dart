@@ -105,7 +105,7 @@ Fighter heroWithPermanentStats(
   hero.attackPower += statPointsFor(LevelUpStat.attack);
   hero.baseDefence += statPointsFor(LevelUpStat.defence);
   hero.level = safeLevel;
-  hero.xp = 0;
+  hero.xp = hero.getXpForCurrentLevel();
   hero.hp = hero.maxHp;
   return hero;
 }

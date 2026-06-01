@@ -51,6 +51,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late final BattleController battle;
   late GameSettings settings;
+  bool _resumeAutoAttackAfterRestart = false;
   final ScrollController _heroesScrollController = ScrollController();
   final ScrollController _centerScrollController = ScrollController();
   final ScrollController _enemiesScrollController = ScrollController();
@@ -91,8 +92,58 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _refresh() {
+    _autoRestartAfterDefeat();
     if (mounted) setState(() {});
     saveGame();
+    _resumeRestartedAutoAttackIfReady();
+  }
+
+  void _autoRestartAfterDefeat() {
+    if (!settings.devMode ||
+        !settings.devAutoRestartOnDefeat ||
+        !battle.gameOver) {
+      return;
+    }
+    final earnedGems = battle.gems;
+    _resumeAutoAttackAfterRestart = battle.autoAttackWasEnabledOnGameOver;
+    battle.resetGame(heroes: widget.initialHeroes, gems: earnedGems);
+    battle.devMode = settings.devMode;
+  }
+
+  void _resumeRestartedAutoAttackIfReady() {
+    if (!_resumeAutoAttackAfterRestart || battle.isAutoAttackRunning) return;
+    _resumeAutoAttackAfterRestart = false;
+    Future<void>.microtask(_runAutoAttack);
+  }
+
+  Future<void> _restartRun({required bool resumeAutoAttack}) async {
+    update(() {
+      _resumeAutoAttackAfterRestart = resumeAutoAttack;
+      battle.stopAutoAttack();
+      battle.resetGame(
+        heroes: widget.initialHeroes,
+        gems: widget.progress.gems,
+      );
+      battle.devMode = settings.devMode;
+    });
+    _resumeRestartedAutoAttackIfReady();
+  }
+
+  Future<void> _runAutoAttack() async {
+    if (!mounted || battle.gameOver) return;
+    if (!battle.autoAttackEnabled) {
+      update(() => battle.autoAttackEnabled = true);
+    }
+    await battle.performAutoAttack(
+      pause: _mobAttackDelay,
+      notify: _refresh,
+      useSkills: settings.autoUseSkills,
+      autoBuyHealingItems: settings.autoBuyHealingItems,
+      useHealingItems: settings.autoUseHealingItems,
+      levelUpMode: settings.levelUpMode,
+    );
+    await _resolvePendingLevelUps();
+    _refresh();
   }
 
   Future<void> saveGame() {
@@ -123,12 +174,8 @@ class _GameScreenState extends State<GameScreen> {
         actions: [
           IconButton(
             tooltip: 'Restart',
-            onPressed: () => update(
-              () => battle.resetGame(
-                heroes: widget.initialHeroes,
-                gems: widget.progress.gems,
-              ),
-            ),
+            onPressed: () =>
+                _restartRun(resumeAutoAttack: battle.autoAttackEnabled),
             icon: const Icon(Icons.restart_alt),
           ),
           IconButton(
@@ -262,11 +309,8 @@ class _GameScreenState extends State<GameScreen> {
         ],
         if (battle.gameOver)
           FilledButton.icon(
-            onPressed: () => update(
-              () => battle.resetGame(
-                heroes: widget.initialHeroes,
-                gems: widget.progress.gems,
-              ),
+            onPressed: () => _restartRun(
+              resumeAutoAttack: battle.autoAttackWasEnabledOnGameOver,
             ),
             icon: const Icon(Icons.restart_alt),
             label: const Text('Restart run'),
@@ -362,17 +406,7 @@ class _GameScreenState extends State<GameScreen> {
                           update(battle.stopAutoAttack);
                           return;
                         }
-                        update(() => battle.autoAttackEnabled = true);
-                        await battle.performAutoAttack(
-                          pause: _mobAttackDelay,
-                          notify: _refresh,
-                          useSkills: settings.autoUseSkills,
-                          autoBuyHealingItems: settings.autoBuyHealingItems,
-                          useHealingItems: settings.autoUseHealingItems,
-                          levelUpMode: settings.levelUpMode,
-                        );
-                        await _resolvePendingLevelUps();
-                        _refresh();
+                        await _runAutoAttack();
                       },
                 icon: Icon(
                   battle.autoAttackEnabled

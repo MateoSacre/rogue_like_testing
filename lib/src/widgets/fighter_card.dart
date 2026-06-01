@@ -118,7 +118,8 @@ class FighterCard extends StatelessWidget {
                               Text('AI ${fighter.aiType.name}'),
                             if (fighter.isHero)
                               _CompactProgressLine(
-                                label: 'LVL ${fighter.level}',
+                                label:
+                                    'LVL ${fighter.level} ${fighter.xp} / ${fighter.xpCap}',
                                 value: fighter.xpCap == 0
                                     ? 1
                                     : fighter.xp / fighter.xpCap,

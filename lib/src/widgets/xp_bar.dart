@@ -14,7 +14,7 @@ class _XpBar extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text('LVL ${fighter.level}')),
+            Expanded(child: Text('LVL ${fighter.level} ${fighter.xp}/$xpCap')),
             Text('XP ${fighter.xp}/$xpCap'),
           ],
         ),

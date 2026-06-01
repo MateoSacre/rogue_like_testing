@@ -31,6 +31,7 @@ class GameSettings {
     this.autoBuyHealingItems = false,
     this.autoUseHealingItems = false,
     this.devMode = false,
+    this.devAutoRestartOnDefeat = false,
     this.seedString = '',
     this.levelUpMode = LevelUpMode.manual,
   });
@@ -41,6 +42,7 @@ class GameSettings {
   final bool autoBuyHealingItems;
   final bool autoUseHealingItems;
   final bool devMode;
+  final bool devAutoRestartOnDefeat;
   final String seedString;
   final LevelUpMode levelUpMode;
 
@@ -51,6 +53,7 @@ class GameSettings {
     bool? autoBuyHealingItems,
     bool? autoUseHealingItems,
     bool? devMode,
+    bool? devAutoRestartOnDefeat,
     String? seedString,
     LevelUpMode? levelUpMode,
   }) {
@@ -61,6 +64,8 @@ class GameSettings {
       autoBuyHealingItems: autoBuyHealingItems ?? this.autoBuyHealingItems,
       autoUseHealingItems: autoUseHealingItems ?? this.autoUseHealingItems,
       devMode: devMode ?? this.devMode,
+      devAutoRestartOnDefeat:
+          devAutoRestartOnDefeat ?? this.devAutoRestartOnDefeat,
       seedString: seedString ?? this.seedString,
       levelUpMode: levelUpMode ?? this.levelUpMode,
     );
@@ -74,6 +79,7 @@ class GameSettings {
       'autoBuyHealingItems': autoBuyHealingItems,
       'autoUseHealingItems': autoUseHealingItems,
       'devMode': devMode,
+      'devAutoRestartOnDefeat': devAutoRestartOnDefeat,
       'seedString': seedString,
       'levelUpMode': levelUpMode.name,
     };
@@ -81,16 +87,21 @@ class GameSettings {
 
   static GameSettings fromJson(Map<String, dynamic>? json) {
     if (json == null) return const GameSettings();
+    final devMode = json['devMode'] == true;
+    final autoAttackSpeed = AutoAttackSpeed.values.firstWhere(
+      (speed) => speed.name == json['autoAttackSpeed'],
+      orElse: () => AutoAttackSpeed.normal,
+    );
     return GameSettings(
       darkTheme: json['darkTheme'] == true,
-      autoAttackSpeed: AutoAttackSpeed.values.firstWhere(
-        (speed) => speed.name == json['autoAttackSpeed'],
-        orElse: () => AutoAttackSpeed.normal,
-      ),
+      autoAttackSpeed: !devMode && autoAttackSpeed == AutoAttackSpeed.instant
+          ? AutoAttackSpeed.normal
+          : autoAttackSpeed,
       autoUseSkills: json['autoUseSkills'] == true,
       autoBuyHealingItems: json['autoBuyHealingItems'] == true,
       autoUseHealingItems: json['autoUseHealingItems'] == true,
-      devMode: json['devMode'] == true,
+      devMode: devMode,
+      devAutoRestartOnDefeat: json['devAutoRestartOnDefeat'] == true,
       seedString: json['seedString'] as String? ?? '',
       levelUpMode: LevelUpMode.values.firstWhere(
         (mode) => mode.name == json['levelUpMode'],

@@ -313,5 +313,17 @@ void main() {
       expect(battle.resumeAutoAttackAfterMerchant, isFalse);
       expect(battle.selectedHero, isNull);
     });
+
+    test('dev auto restart setting round trips through json', () {
+      final settings = const GameSettings(
+        devMode: true,
+        devAutoRestartOnDefeat: true,
+      );
+
+      final restored = GameSettings.fromJson(settings.toJson());
+
+      expect(restored.devMode, isTrue);
+      expect(restored.devAutoRestartOnDefeat, isTrue);
+    });
   });
 }

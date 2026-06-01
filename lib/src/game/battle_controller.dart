@@ -61,6 +61,7 @@ class BattleController implements BattleActions {
   bool isAnimating = false;
   bool autoAttackEnabled = false;
   bool isAutoAttackRunning = false;
+  bool autoAttackWasEnabledOnGameOver = false;
   bool devMode = false;
   LevelUpMode currentLevelUpMode = LevelUpMode.manual;
 
@@ -121,6 +122,7 @@ class BattleController implements BattleActions {
     isAnimating = false;
     autoAttackEnabled = false;
     isAutoAttackRunning = false;
+    autoAttackWasEnabledOnGameOver = false;
     log.clear();
     pendingLevelUps.clear();
     _startNextWave();
@@ -201,6 +203,7 @@ class BattleController implements BattleActions {
     isAnimating = false;
     autoAttackEnabled = false;
     isAutoAttackRunning = false;
+    autoAttackWasEnabledOnGameOver = false;
     pendingLevelUps.clear();
     log
       ..clear()
@@ -644,6 +647,7 @@ class BattleController implements BattleActions {
     activeMobTarget = null;
     if (heroes.isDefeated) {
       gameOver = true;
+      autoAttackWasEnabledOnGameOver = autoAttackEnabled;
       autoAttackEnabled = false;
       gems += max(1, waveCounter ~/ GameBalance.finalThemeWaveRewardMultiplier);
       addLog('Game over at wave $waveCounter');
