@@ -12,6 +12,9 @@ class SaveService {
 
   static File get _file => File(fileName);
 
+  // All writes are chained onto this future, guaranteeing sequential execution.
+  static Future<void> _queue = Future.value();
+
   static Future<Map<String, dynamic>?> load() async {
     try {
       if (!await _file.exists()) return null;
@@ -27,7 +30,7 @@ class SaveService {
     required PlayerProgress progress,
     BattleController? battle,
     Map<String, dynamic>? battleJson,
-  }) async {
+  }) {
     final payload = <String, dynamic>{
       'settings': settings.toJson(),
       'progression': progress.toJson(),
@@ -36,8 +39,11 @@ class SaveService {
     if (savedBattle != null) {
       payload['battle'] = savedBattle;
     }
-    await _file.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(payload),
-    );
+    final encoded = const JsonEncoder.withIndent('  ').convert(payload);
+    // Chain onto the queue: the next write only starts when the previous one finishes.
+    return _queue = _queue.then((_) => _file.writeAsString(encoded));
   }
-}
+
+  /// Waits for any in-progress write to complete.
+  /// Call this on app lifecycle pause/detach to avoid truncated saves.
+  static Future<void> flush() => _queue;

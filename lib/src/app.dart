@@ -13,7 +13,8 @@ class RogueLiteApp extends StatefulWidget {
   State<RogueLiteApp> createState() => _RogueLiteAppState();
 }
 
-class _RogueLiteAppState extends State<RogueLiteApp> {
+class _RogueLiteAppState extends State<RogueLiteApp>
+    with WidgetsBindingObserver {
   GameSettings settings = const GameSettings();
   PlayerProgress progress = PlayerProgress.initial();
   Map<String, dynamic>? battleJson;
@@ -22,7 +23,22 @@ class _RogueLiteAppState extends State<RogueLiteApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     loadSave();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      SaveService.flush();
+    }
   }
 
   Future<void> loadSave() async {
