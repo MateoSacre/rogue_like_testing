@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Game save file (local player data, not meant to be versioned)
+roguelite_save.json
