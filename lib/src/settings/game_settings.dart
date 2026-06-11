@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import '../theme/app_durations.dart';
 
 enum AutoAttackSpeed {
@@ -26,6 +27,7 @@ enum LevelUpMode {
 class GameSettings {
   const GameSettings({
     this.darkTheme = false,
+    this.language = AppLanguage.fr,
     this.autoAttackSpeed = AutoAttackSpeed.normal,
     this.autoUseSkills = false,
     this.autoBuyHealingItems = false,
@@ -37,6 +39,7 @@ class GameSettings {
   });
 
   final bool darkTheme;
+  final AppLanguage language;
   final AutoAttackSpeed autoAttackSpeed;
   final bool autoUseSkills;
   final bool autoBuyHealingItems;
@@ -48,6 +51,7 @@ class GameSettings {
 
   GameSettings copyWith({
     bool? darkTheme,
+    AppLanguage? language,
     AutoAttackSpeed? autoAttackSpeed,
     bool? autoUseSkills,
     bool? autoBuyHealingItems,
@@ -59,6 +63,7 @@ class GameSettings {
   }) {
     return GameSettings(
       darkTheme: darkTheme ?? this.darkTheme,
+      language: language ?? this.language,
       autoAttackSpeed: autoAttackSpeed ?? this.autoAttackSpeed,
       autoUseSkills: autoUseSkills ?? this.autoUseSkills,
       autoBuyHealingItems: autoBuyHealingItems ?? this.autoBuyHealingItems,
@@ -74,6 +79,7 @@ class GameSettings {
   Map<String, dynamic> toJson() {
     return {
       'darkTheme': darkTheme,
+      'language': language.name,
       'autoAttackSpeed': autoAttackSpeed.name,
       'autoUseSkills': autoUseSkills,
       'autoBuyHealingItems': autoBuyHealingItems,
@@ -94,6 +100,7 @@ class GameSettings {
     );
     return GameSettings(
       darkTheme: json['darkTheme'] == true,
+      language: AppLanguage.fromName(json['language'] as String?),
       autoAttackSpeed: !devMode && autoAttackSpeed == AutoAttackSpeed.instant
           ? AutoAttackSpeed.normal
           : autoAttackSpeed,

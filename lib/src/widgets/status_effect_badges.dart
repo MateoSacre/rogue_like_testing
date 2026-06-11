@@ -13,7 +13,7 @@ class _StatusEffectBadges extends StatelessWidget {
     final visuals = effects.map(_StatusEffectVisual.fromEffect).toList();
     final iconSize = compact ? 14.0 : AppLayout.iconMedium;
     final badgeSize = compact ? 20.0 : 28.0;
-    final tooltip = _tooltipMessage(effects);
+    final tooltip = _tooltipMessage(context, effects);
 
     return Tooltip(
       message: tooltip,
@@ -48,25 +48,27 @@ class _StatusEffectBadges extends StatelessWidget {
     );
   }
 
-  String _tooltipMessage(List<StatusEffect> effects) {
-    return effects.map(_effectLine).join('\n');
+  String _tooltipMessage(BuildContext context, List<StatusEffect> effects) {
+    return effects.map((effect) => _effectLine(context, effect)).join('\n');
   }
 
-  String _effectLine(StatusEffect effect) {
+  String _effectLine(BuildContext context, StatusEffect effect) {
     final parts = <String>[];
     if (effect.kind == EffectKind.recurrent && effect.damage > 0) {
-      parts.add('Inflicts ${fmt(effect.damage)} damage each turn');
-      parts.add('Ignores armor');
+      parts.add(context.tr(K.fxDamagePerTurn, [fmt(effect.damage)]));
+      parts.add(context.tr(K.fxIgnoresArmor));
     }
     if (effect.kind == EffectKind.buff && effect.defenceBonus != 0) {
-      parts.add(
-        '${effect.defenceBonus > 0 ? '+' : ''}${fmt(effect.defenceBonus)} defence',
-      );
+      final signed =
+          '${effect.defenceBonus > 0 ? '+' : ''}${fmt(effect.defenceBonus)}';
+      parts.add(context.tr(K.fxDefence, [signed]));
     }
     if (parts.isEmpty) parts.add(effect.kind.name);
 
-    final turnLabel = effect.duration == 1 ? 'turn' : 'turns';
-    return '${effect.name}: ${parts.join(', ')}. ${effect.duration} $turnLabel remaining.';
+    final remaining = effect.duration == 1
+        ? context.tr(K.fxTurnRemaining)
+        : context.tr(K.fxTurnsRemaining, [effect.duration]);
+    return context.tr(K.fxLine, [effect.name, parts.join(', '), remaining]);
   }
 }
 

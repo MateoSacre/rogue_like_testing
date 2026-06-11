@@ -30,14 +30,14 @@ class _StatAllocationDialogState extends State<_StatAllocationDialog> {
       (stat) => stats.valueFor(stat),
     );
     return AlertDialog(
-      title: Text('Stats de ${widget.hero.name}'),
+      title: Text(context.tr(K.statsOf, [widget.hero.name])),
       content: SizedBox(
-        width: 420,
+        width: AppLayout.dialogWidth(context, 420),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Niveau ${total + 1} - Points non attribues: $remaining'),
+            Text(context.tr(K.levelUnassigned, [total + 1, remaining])),
             const SizedBox(height: AppLayout.sectionGap),
             _StatAllocationRow(
               stat: LevelUpStat.maxHp,
@@ -84,11 +84,11 @@ class _StatAllocationDialogState extends State<_StatAllocationDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Annuler'),
+          child: Text(context.tr(K.cancel)),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(stats),
-          child: const Text('Appliquer'),
+          child: Text(context.tr(K.apply)),
         ),
       ],
     );
@@ -120,16 +120,20 @@ class _StatAllocationRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppLayout.controlGap),
       child: Row(
         children: [
-          Expanded(child: Text('${_shortStat(stat)}: $preview')),
+          Expanded(
+            child: Text(
+              context.tr(K.statRow, [context.l10n.levelUpStatShort(stat), preview]),
+            ),
+          ),
           Text(value.toString()),
           const SizedBox(width: AppLayout.controlGap),
           IconButton(
-            tooltip: 'Retirer',
+            tooltip: context.tr(K.remove),
             onPressed: canRemove ? onRemove : null,
             icon: const Icon(Icons.remove),
           ),
           IconButton(
-            tooltip: 'Ajouter',
+            tooltip: context.tr(K.add),
             onPressed: canAdd ? onAdd : null,
             icon: const Icon(Icons.add),
           ),

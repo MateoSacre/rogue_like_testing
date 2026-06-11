@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'l10n/app_localizations.dart';
 import 'persistence/save_service.dart';
 import 'progression/player_progress.dart';
 import 'settings/game_settings.dart';
@@ -112,6 +113,12 @@ class _RogueLiteAppState extends State<RogueLiteApp>
         useMaterial3: true,
       ),
       themeMode: settings.darkTheme ? ThemeMode.dark : ThemeMode.light,
+      // builder wraps the Navigator, so AppLocalizations is an ancestor of
+      // every route AND every dialog/popup pushed on the root navigator.
+      builder: (context, child) => AppLocalizations(
+        language: settings.language,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: loaded
           ? StartScreen(
               settings: settings,

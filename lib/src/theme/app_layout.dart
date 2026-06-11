@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 class AppLayout {
   const AppLayout._();
 
@@ -28,4 +30,12 @@ class AppLayout {
 
   static const borderRadius = 8.0;
   static const progressRadius = 4.0;
+
+  /// A dialog content width that never exceeds the screen (avoids overflow on
+  /// narrow devices). Returns [preferred] when it fits, otherwise the
+  /// available width minus page padding on both sides.
+  static double dialogWidth(BuildContext context, double preferred) {
+    final available = MediaQuery.sizeOf(context).width - pagePadding * 2;
+    return preferred < available ? preferred : available;
+  }
 }

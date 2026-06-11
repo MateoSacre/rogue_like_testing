@@ -29,14 +29,21 @@ class _HeroProgressTile extends StatelessWidget {
                   ),
                   const SizedBox(height: AppLayout.tinyGap),
                   Text(
-                    'Lv $level  HP ${fmt(hero.maxHp)}  ATK ${fmt(hero.attackPower)}  DEF ${fmt(hero.baseDefence)}',
+                    context.tr(K.tileStatLine, [
+                      level,
+                      fmt(hero.maxHp),
+                      fmt(hero.attackPower),
+                      fmt(hero.baseDefence),
+                    ]),
                   ),
                   if (progress.isUnlocked(hero.name))
                     Text(
-                      '+${progress.statPointsFor(hero.name).maxHp} HP  '
-                      '+${progress.statPointsFor(hero.name).attack} ATK  '
-                      '+${progress.statPointsFor(hero.name).defence} DEF  '
-                      '${progress.statPointsFor(hero.name).unassigned} libres',
+                      context.tr(K.tilePermanentPoints, [
+                        progress.statPointsFor(hero.name).maxHp,
+                        progress.statPointsFor(hero.name).attack,
+                        progress.statPointsFor(hero.name).defence,
+                        progress.statPointsFor(hero.name).unassigned,
+                      ]),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   if (hero.skill != null)

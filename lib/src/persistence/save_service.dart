@@ -47,3 +47,4 @@ class SaveService {
   /// Waits for any in-progress write to complete.
   /// Call this on app lifecycle pause/detach to avoid truncated saves.
   static Future<void> flush() => _queue;
+}

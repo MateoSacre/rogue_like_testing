@@ -14,8 +14,8 @@ class _XpBar extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text('LVL ${fighter.level} ${fighter.xp}/$xpCap')),
-            Text('XP ${fighter.xp}/$xpCap'),
+            Expanded(child: Text(context.tr(K.lvlLabel, [fighter.level]))),
+            Text(context.tr(K.xpValue, [fighter.xp, xpCap])),
           ],
         ),
         const SizedBox(height: AppLayout.tinyGap),

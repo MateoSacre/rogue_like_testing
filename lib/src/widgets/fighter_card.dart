@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/skill.dart';
@@ -112,14 +113,22 @@ class FighterCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'HP ${fmt(fighter.hp)}/${fmt(fighter.maxHp)}  ATK ${fmt(fighter.attackPower)}  DEF ${fmt(fighter.defence)}',
+                              context.tr(K.statLineCompact, [
+                                fmt(fighter.hp),
+                                fmt(fighter.maxHp),
+                                fmt(fighter.attackPower),
+                                fmt(fighter.defence),
+                              ]),
                             ),
                             if (showDevInfo && !fighter.isHero)
-                              Text('AI ${fighter.aiType.name}'),
+                              Text(context.tr(K.aiInfo, [fighter.aiType.name])),
                             if (fighter.isHero)
                               _CompactProgressLine(
-                                label:
-                                    'LVL ${fighter.level} ${fighter.xp} / ${fighter.xpCap}',
+                                label: context.tr(K.lvlXpCompact, [
+                                  fighter.level,
+                                  fighter.xp,
+                                  fighter.xpCap,
+                                ]),
                                 value: fighter.xpCap == 0
                                     ? 1
                                     : fighter.xp / fighter.xpCap,
@@ -152,74 +161,102 @@ class FighterCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppLayout.borderRadius),
-        child: Padding(
-          padding: const EdgeInsets.all(AppLayout.cardPadding),
-          child: Opacity(
-            opacity: fighter.isAlive ? 1 : .42,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        fighter.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    if (fighter.effects.isNotEmpty) ...[
-                      const SizedBox(width: AppLayout.compactGap),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 92),
-                        child: _StatusEffectBadges(effects: fighter.effects),
-                      ),
-                    ],
-                    if (pickable)
-                      const Icon(Icons.touch_app, size: AppLayout.iconSmall),
-                  ],
-                ),
-                const SizedBox(height: AppLayout.controlGap),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppLayout.progressRadius),
-                  child: LinearProgressIndicator(
-                    minHeight: AppLayout.hpBarHeight,
-                    value: hpRatio.clamp(0, 1).toDouble(),
-                    backgroundColor: AppColors.progressTrack(context),
-                    valueColor: AlwaysStoppedAnimation(
-                      hpRatio > .5
-                          ? AppColors.hpHigh
-                          : (hpRatio > .25
-                                ? AppColors.hpMedium
-                                : AppColors.hpLow),
+        // The card lives in a fixed-height grid cell, so scale the content
+        // down if it would otherwise overflow (extra dev "AI" line, large
+        // accessibility text, …). It renders at full size when it fits.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Padding(
+              padding: const EdgeInsets.all(AppLayout.cardPadding),
+              child: Opacity(
+                opacity: fighter.isAlive ? 1 : .42,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.topLeft,
+                  child: SizedBox(
+                    width: constraints.maxWidth - AppLayout.cardPadding * 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                fighter.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            if (fighter.effects.isNotEmpty) ...[
+                              const SizedBox(width: AppLayout.compactGap),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 92),
+                                child: _StatusEffectBadges(
+                                  effects: fighter.effects,
+                                ),
+                              ),
+                            ],
+                            if (pickable)
+                              const Icon(
+                                Icons.touch_app,
+                                size: AppLayout.iconSmall,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: AppLayout.controlGap),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            AppLayout.progressRadius,
+                          ),
+                          child: LinearProgressIndicator(
+                            minHeight: AppLayout.hpBarHeight,
+                            value: hpRatio.clamp(0, 1).toDouble(),
+                            backgroundColor: AppColors.progressTrack(context),
+                            valueColor: AlwaysStoppedAnimation(
+                              hpRatio > .5
+                                  ? AppColors.hpHigh
+                                  : (hpRatio > .25
+                                        ? AppColors.hpMedium
+                                        : AppColors.hpLow),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppLayout.compactGap),
+                        Text(
+                          context.tr(K.hp, [
+                            fmt(fighter.hp),
+                            fmt(fighter.maxHp),
+                          ]),
+                        ),
+                        Text(
+                          context.tr(K.atkDef, [
+                            fmt(fighter.attackPower),
+                            fmt(fighter.defence),
+                          ]),
+                        ),
+                        if (showDevInfo && !fighter.isHero)
+                          Text(
+                            context.tr(K.aiInfo, [fighter.aiType.name]),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        if (fighter.isHero) ...[
+                          const SizedBox(height: AppLayout.compactGap),
+                          _XpBar(fighter: fighter),
+                        ],
+                        if (skill != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: _SkillChargeBar(skill: skill),
+                          ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: AppLayout.compactGap),
-                Text('HP ${fmt(fighter.hp)}/${fmt(fighter.maxHp)}'),
-                Text(
-                  'ATK ${fmt(fighter.attackPower)}   DEF ${fmt(fighter.defence)}',
-                ),
-                if (showDevInfo && !fighter.isHero)
-                  Text(
-                    'AI ${fighter.aiType.name}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                if (fighter.isHero) ...[
-                  const SizedBox(height: AppLayout.compactGap),
-                  _XpBar(fighter: fighter),
-                ],
-                if (skill != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: _SkillChargeBar(skill: skill),
-                  ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

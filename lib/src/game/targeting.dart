@@ -83,12 +83,17 @@ List<Fighter> pickMobTargets(
   return ordered.take(maximumTargets).toList();
 }
 
+/// Ally with the lowest HP *ratio* — used to heal whoever is proportionally
+/// closest to death (heals are percentage based).
 Fighter lowestHp(List<Fighter> fighters) {
   return fighters.reduce((a, b) => a.hp / a.maxHp <= b.hp / b.maxHp ? a : b);
 }
 
+/// Enemy with the most *absolute* current HP — used by DoT skills (bleed,
+/// poison) so the damage-over-time lands on the target that will survive
+/// longest and soak the most ticks (e.g. a boss over its trash mobs).
 Fighter highestHp(List<Fighter> fighters) {
-  return fighters.reduce((a, b) => a.hp / a.maxHp >= b.hp / b.maxHp ? a : b);
+  return fighters.reduce((a, b) => a.hp >= b.hp ? a : b);
 }
 
 AiType randomAi(Skill? skill, Random random) {

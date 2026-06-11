@@ -46,3 +46,4 @@ app.*.map.json
 
 # Game save file (local player data, not meant to be versioned)
 roguelite_save.json
+balance_report.csv

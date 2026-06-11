@@ -9,6 +9,11 @@ class GameBalance {
 
   static const waveThemeLength = 5;
   static const maxWaveSize = 6;
+
+  /// A wave that is still unresolved after this many rounds is decided by
+  /// comparing the two teams' HP ratio (highest ratio wins the wave).
+  /// Prevents endless stalemates.
+  static const maxRoundsPerWave = 20;
   static const waveValueOffset = 0; //10
   static const waveRewardMultiplier = 10;
   static const killXpDivisor = 3;

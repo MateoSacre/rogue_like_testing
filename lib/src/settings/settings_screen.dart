@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_language.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_layout.dart';
 import 'game_settings.dart';
 
@@ -59,26 +61,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Reglages')),
+      appBar: AppBar(title: Text(context.tr(K.settings))),
       body: ListView(
         padding: const EdgeInsets.all(AppLayout.pagePadding),
         children: [
           SwitchListTile(
-            title: const Text('Theme sombre'),
+            title: Text(context.tr(K.darkTheme)),
             value: settings.darkTheme,
             onChanged: (value) => update(settings.copyWith(darkTheme: value)),
           ),
           const SizedBox(height: AppLayout.sectionGap),
+          Text(context.tr(K.language), style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppLayout.controlGap),
+          SegmentedButton<AppLanguage>(
+            segments: AppLanguage.values
+                .map(
+                  (language) => ButtonSegment(
+                    value: language,
+                    label: Text(language.nativeLabel),
+                  ),
+                )
+                .toList(),
+            selected: {settings.language},
+            onSelectionChanged: (selection) =>
+                update(settings.copyWith(language: selection.first)),
+          ),
+          const SizedBox(height: AppLayout.sectionGap),
           Text(
-            'Vitesse attaque auto',
+            context.tr(K.autoAttackSpeedTitle),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppLayout.controlGap),
           SegmentedButton<AutoAttackSpeed>(
             segments: _availableAutoAttackSpeeds
                 .map(
-                  (speed) =>
-                      ButtonSegment(value: speed, label: Text(speed.label)),
+                  (speed) => ButtonSegment(
+                    value: speed,
+                    label: Text(context.l10n.autoAttackSpeed(speed)),
+                  ),
                 )
                 .toList(),
             selected: {
@@ -92,47 +112,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: AppLayout.sectionGap),
           SwitchListTile(
-            title: const Text('Competences en auto'),
-            subtitle: const Text(
-              'Les heros utilisent leurs capacites quand elles sont pretes.',
-            ),
+            title: Text(context.tr(K.autoUseSkills)),
+            subtitle: Text(context.tr(K.autoUseSkillsDesc)),
             value: settings.autoUseSkills,
             onChanged: (value) =>
                 update(settings.copyWith(autoUseSkills: value)),
           ),
           SwitchListTile(
-            title: const Text('Achat auto soins'),
-            subtitle: const Text(
-              'Le marchand stocke des soins avec l or disponible.',
-            ),
+            title: Text(context.tr(K.autoBuyHealing)),
+            subtitle: Text(context.tr(K.autoBuyHealingDesc)),
             value: settings.autoBuyHealingItems,
             onChanged: (value) =>
                 update(settings.copyWith(autoBuyHealingItems: value)),
           ),
           SwitchListTile(
-            title: const Text('Soins auto'),
-            subtitle: const Text(
-              'Les potions stockees sont utilisees a 25% PV ou moins.',
-            ),
+            title: Text(context.tr(K.autoUseHealing)),
+            subtitle: Text(context.tr(K.autoUseHealingDesc)),
             value: settings.autoUseHealingItems,
             onChanged: (value) =>
                 update(settings.copyWith(autoUseHealingItems: value)),
           ),
           SwitchListTile(
-            title: const Text('Dev mode'),
-            subtitle: const Text(
-              'Affiche progressivement des informations de debug.',
-            ),
+            title: Text(context.tr(K.devMode)),
+            subtitle: Text(context.tr(K.devModeDesc)),
             value: settings.devMode,
             onChanged: (value) => update(_withDevMode(value)),
           ),
           if (settings.devMode) ...[
             const SizedBox(height: AppLayout.controlGap),
             SwitchListTile(
-              title: const Text('Auto restart apres defaite'),
-              subtitle: const Text(
-                'Relance automatiquement une run quand l equipe tombe.',
-              ),
+              title: Text(context.tr(K.devAutoRestart)),
+              subtitle: Text(context.tr(K.devAutoRestartDesc)),
               value: settings.devAutoRestartOnDefeat,
               onChanged: (value) =>
                   update(settings.copyWith(devAutoRestartOnDefeat: value)),
@@ -140,10 +150,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: AppLayout.controlGap),
             TextField(
               controller: seedController,
-              decoration: const InputDecoration(
-                labelText: 'Seed',
-                hintText: 'ex: test-build-1',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.tr(K.seedLabel),
+                hintText: context.tr(K.seedHint),
+                border: const OutlineInputBorder(),
               ),
               onChanged: (value) {
                 update(settings.copyWith(seedString: value));
@@ -151,12 +161,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
           const SizedBox(height: AppLayout.sectionGap),
-          Text('Level-up', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            context.tr(K.levelUpTitle),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: AppLayout.controlGap),
           SegmentedButton<LevelUpMode>(
             segments: LevelUpMode.values
                 .map(
-                  (mode) => ButtonSegment(value: mode, label: Text(mode.label)),
+                  (mode) => ButtonSegment(
+                    value: mode,
+                    label: Text(context.l10n.levelUpMode(mode)),
+                  ),
                 )
                 .toList(),
             selected: {settings.levelUpMode},
@@ -175,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               onPressed: _confirmResetProgress,
               icon: const Icon(Icons.delete_forever),
-              label: const Text('Reset progression'),
+              label: Text(context.tr(K.resetProgress)),
             ),
           ],
         ],
@@ -188,18 +204,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Reset progression'),
-          content: const Text(
-            'Toutes les gemmes, heros debloques, ameliorations et runs sauvegardees seront supprimes.',
-          ),
+          title: Text(context.tr(K.resetProgress)),
+          content: Text(context.tr(K.resetProgressConfirm)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Annuler'),
+              child: Text(context.tr(K.cancel)),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Reset'),
+              child: Text(context.tr(K.reset)),
             ),
           ],
         );

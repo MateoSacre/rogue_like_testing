@@ -37,7 +37,7 @@ class _MerchantAction extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppLayout.controlGap),
-            Text('${cost}g'),
+            Text(context.tr(K.costGold, [cost, context.tr(K.gold)])),
           ],
         ),
       ),

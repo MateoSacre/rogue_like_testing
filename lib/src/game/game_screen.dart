@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/level_up_stat.dart';
@@ -16,11 +19,16 @@ import '../widgets/fighter_card.dart';
 import 'battle_controller.dart';
 import 'game_balance.dart';
 
+part 'battle_controls.dart';
+part 'battle_summary.dart';
 part 'boss_warning.dart';
+part 'dev_tools_panel.dart';
 part 'inventory_widgets.dart';
 part 'level_up_dialog.dart';
 part 'merchant_action.dart';
+part 'merchant_view.dart';
 part 'target_preview_label.dart';
+part 'team_panel.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({
@@ -48,7 +56,7 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late final BattleController battle;
   late GameSettings settings;
   bool _resumeAutoAttackAfterRestart = false;
@@ -56,9 +64,19 @@ class _GameScreenState extends State<GameScreen> {
   final ScrollController _centerScrollController = ScrollController();
   final ScrollController _enemiesScrollController = ScrollController();
 
+  // Saving is throttled (leading edge + trailing): during auto-attack the
+  // `notify` callback fires many times per second, and saving on every call
+  // would serialize the whole battle to JSON and hit the disk dozens of
+  // times a second. We coalesce those into at most one save per window, and
+  // flush immediately at critical moments (game over, dispose, app pause).
+  static const _saveThrottle = Duration(milliseconds: 500);
+  Timer? _saveTimer;
+  bool _saveQueued = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     settings = widget.settings;
     battle = widget.initialBattleJson == null
         ? BattleController(
@@ -76,15 +94,69 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Persist the latest state to disk, but WITHOUT the parent callbacks:
+    // calling setState on an ancestor while this route unmounts would throw.
+    _saveTimer?.cancel();
+    _saveTimer = null;
+    _saveQueued = false;
+    _saveToDiskOnly();
     _heroesScrollController.dispose();
     _centerScrollController.dispose();
     _enemiesScrollController.dispose();
     super.dispose();
   }
 
+  void _saveToDiskOnly() {
+    // Shared-reference mutation is safe; the parent is not notified here.
+    widget.progress.gems = battle.gems;
+    SaveService.save(
+      settings: settings,
+      progress: widget.progress,
+      battleJson: battle.toJson(),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _flushSaveNow();
+    }
+  }
+
+  /// Requests a save, throttled to at most one per [_saveThrottle].
+  /// Leading edge: the first request in a quiet period saves immediately;
+  /// further requests within the window are coalesced into one trailing save.
+  void _scheduleSave() {
+    if (_saveTimer != null) {
+      _saveQueued = true;
+      return;
+    }
+    saveGame();
+    _saveTimer = Timer(_saveThrottle, _onSaveCooldownEnd);
+  }
+
+  void _onSaveCooldownEnd() {
+    _saveTimer = null;
+    if (_saveQueued) {
+      _saveQueued = false;
+      _scheduleSave();
+    }
+  }
+
+  /// Cancels any pending throttled save and saves the current state now.
+  void _flushSaveNow() {
+    _saveTimer?.cancel();
+    _saveTimer = null;
+    _saveQueued = false;
+    saveGame();
+  }
+
   void update(void Function() action) {
     setState(action);
-    saveGame();
+    _scheduleSave();
   }
 
   Future<void> _mobAttackDelay() {
@@ -94,7 +166,12 @@ class _GameScreenState extends State<GameScreen> {
   void _refresh() {
     _autoRestartAfterDefeat();
     if (mounted) setState(() {});
-    saveGame();
+    // Game over is a rare, important transition — persist it right away.
+    if (battle.gameOver) {
+      _flushSaveNow();
+    } else {
+      _scheduleSave();
+    }
     _resumeRestartedAutoAttackIfReady();
   }
 
@@ -169,17 +246,20 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Wave ${battle.waveCounter} - ${battle.waveInfo.category.label}',
+          context.tr(K.waveTitle, [
+            battle.waveCounter,
+            context.l10n.mobCategory(battle.waveInfo.category),
+          ]),
         ),
         actions: [
           IconButton(
-            tooltip: 'Restart',
+            tooltip: context.tr(K.restart),
             onPressed: () =>
                 _restartRun(resumeAutoAttack: battle.autoAttackEnabled),
             icon: const Icon(Icons.restart_alt),
           ),
           IconButton(
-            tooltip: 'Reglages',
+            tooltip: context.tr(K.settings),
             onPressed: _openSettings,
             icon: const Icon(Icons.settings),
           ),
@@ -231,9 +311,23 @@ class _GameScreenState extends State<GameScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _gridTeamPanel('Heroes', battle.heroes, true)),
+              Expanded(
+                child: _TeamPanel(
+                  state: this,
+                  team: battle.heroes,
+                  isHeroes: true,
+                  compact: false,
+                ),
+              ),
               const SizedBox(width: AppLayout.panelGap),
-              Expanded(child: _gridTeamPanel('Enemies', battle.mobs, false)),
+              Expanded(
+                child: _TeamPanel(
+                  state: this,
+                  team: battle.mobs,
+                  isHeroes: false,
+                  compact: false,
+                ),
+              ),
             ],
           ),
         ),
@@ -247,21 +341,30 @@ class _GameScreenState extends State<GameScreen> {
       children: [
         Expanded(
           flex: 36,
-          child: _compactGridTeamPanel('Enemies', battle.mobs, false),
+          child: _TeamPanel(
+            state: this,
+            team: battle.mobs,
+            isHeroes: false,
+            compact: true,
+          ),
         ),
         const SizedBox(height: AppLayout.controlGap),
-        Expanded(flex: 28, child: _centerPanel(compact: true)),
+        Expanded(flex: 28, child: _centerPanel()),
         const SizedBox(height: AppLayout.controlGap),
         Expanded(
           flex: 36,
-          child: _compactGridTeamPanel('Heroes', battle.heroes, true),
+          child: _TeamPanel(
+            state: this,
+            team: battle.heroes,
+            isHeroes: true,
+            compact: true,
+          ),
         ),
       ],
     );
   }
 
-  Widget _centerPanel({bool compact = false}) {
-    if (!compact) return _battleControlsPanel(showSummary: true);
+  Widget _centerPanel() {
     return LayoutBuilder(
       builder: (context, constraints) {
         return FittedBox(
@@ -269,7 +372,7 @@ class _GameScreenState extends State<GameScreen> {
           alignment: Alignment.topCenter,
           child: SizedBox(
             width: constraints.maxWidth,
-            child: _battleControlsPanel(showSummary: true, compact: true),
+            child: _BattleControls(state: this, showSummary: true, compact: true),
           ),
         );
       },
@@ -280,216 +383,27 @@ class _GameScreenState extends State<GameScreen> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppLayout.summaryPadding),
-        child: _battleControlsPanel(showSummary: true),
+        child: _BattleControls(state: this, showSummary: true),
       ),
     );
   }
 
-  Widget _battleControlsPanel({
-    required bool showSummary,
-    bool compact = false,
-  }) {
-    final hero = battle.selectedHero;
-    final skill = hero?.skill;
-    final targets = battle.targetsForSelectedAction();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (showSummary) ...[
-          compact ? _compactSummaryContent() : _summaryContent(),
-          SizedBox(
-            height: compact ? AppLayout.compactGap : AppLayout.sectionGap,
-          ),
-        ],
-        if (settings.devMode) ...[
-          _devToolsPanel(compact: compact),
-          SizedBox(
-            height: compact ? AppLayout.compactGap : AppLayout.sectionGap,
-          ),
-        ],
-        if (battle.gameOver)
-          FilledButton.icon(
-            onPressed: () => _restartRun(
-              resumeAutoAttack: battle.autoAttackWasEnabledOnGameOver,
-            ),
-            icon: const Icon(Icons.restart_alt),
-            label: const Text('Restart run'),
-          )
-        else if (battle.merchantAvailable)
-          compact ? _compactMerchantActions() : _merchantPanel()
-        else ...[
-          Text('Hero action', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppLayout.controlGap),
-          SegmentedButton<ActionMode>(
-            segments: [
-              const ButtonSegment(
-                value: ActionMode.attack,
-                icon: Icon(Icons.gps_fixed),
-                label: Text('Attack'),
-              ),
-              ButtonSegment(
-                value: ActionMode.skill,
-                enabled: skill?.isReady == true,
-                icon: const Icon(Icons.auto_awesome),
-                label: Text(skill == null ? 'Skill' : skill.name),
-              ),
-            ],
-            selected: {battle.actionMode},
-            onSelectionChanged: battle.isAnimating || battle.autoAttackEnabled
-                ? null
-                : (selection) =>
-                      update(() => battle.setAction(selection.first)),
-          ),
-          SizedBox(
-            height: compact
-                ? AppLayout.compactGap
-                : AppLayout.warningHorizontalPadding,
-          ),
-          if (skill != null && !compact)
-            Text(
-              '${skill.name}: ${skill.description}'
-              ' - Charge ${skill.charge}/${skill.maxCharge}',
-            ),
-          if (!compact) ...[
-            const SizedBox(height: AppLayout.sectionGap),
-            Wrap(
-              spacing: AppLayout.controlGap,
-              runSpacing: AppLayout.controlGap,
-              children: targets.map((target) {
-                final selected = battle.selectedTarget == target;
-                return ChoiceChip(
-                  selected: selected,
-                  label: _TargetPreviewLabel(
-                    name: target.name,
-                    preview: battle.previewForTarget(target),
-                  ),
-                  onSelected: battle.isAnimating || battle.autoAttackEnabled
-                      ? null
-                      : (_) => update(() => battle.selectedTarget = target),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: AppLayout.sectionGap),
-          ],
-          Wrap(
-            spacing: AppLayout.controlGap,
-            runSpacing: AppLayout.controlGap,
-            children: [
-              FilledButton.icon(
-                onPressed: battle.canAct
-                    ? () async {
-                        await battle.performSelectedAction(
-                          pause: _mobAttackDelay,
-                          notify: _refresh,
-                          levelUpMode: settings.levelUpMode,
-                        );
-                        await _resolvePendingLevelUps();
-                        _refresh();
-                      }
-                    : null,
-                icon: const Icon(Icons.play_arrow),
-                label: Text(
-                  compact
-                      ? (hero == null ? 'Hero' : 'Act')
-                      : (hero == null
-                            ? 'Choose a hero'
-                            : 'Act with ${hero.name}'),
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed:
-                    battle.gameOver ||
-                        (battle.isAnimating && !battle.autoAttackEnabled)
-                    ? null
-                    : () async {
-                        if (battle.autoAttackEnabled) {
-                          update(battle.stopAutoAttack);
-                          return;
-                        }
-                        await _runAutoAttack();
-                      },
-                icon: Icon(
-                  battle.autoAttackEnabled
-                      ? Icons.pause_circle
-                      : Icons.flash_auto,
-                ),
-                label: Text(
-                  compact
-                      ? (battle.autoAttackEnabled ? 'Auto ON' : 'Auto')
-                      : (battle.autoAttackEnabled
-                            ? 'Auto attack ON'
-                            : 'Auto attack OFF'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
+  Future<void> _actWithSelectedHero() async {
+    await battle.performSelectedAction(
+      pause: _mobAttackDelay,
+      notify: _refresh,
+      levelUpMode: settings.levelUpMode,
     );
+    await _resolvePendingLevelUps();
+    _refresh();
   }
 
-  Widget _compactMerchantActions() {
-    return Wrap(
-      spacing: AppLayout.controlGap,
-      runSpacing: AppLayout.controlGap,
-      children: [
-        FilledButton.icon(
-          onPressed: _openMerchantPage,
-          icon: const Icon(Icons.storefront),
-          label: const Text('Open shop'),
-        ),
-        OutlinedButton.icon(
-          onPressed: _continueAfterMerchant,
-          icon: const Icon(Icons.skip_next),
-          label: const Text('Skip shop'),
-        ),
-      ],
-    );
-  }
-
-  Widget _devToolsPanel({required bool compact}) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(AppLayout.borderRadius),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppLayout.controlGap),
-        child: Wrap(
-          spacing: AppLayout.controlGap,
-          runSpacing: AppLayout.controlGap,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              compact ? 'Dev' : 'Dev tools',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            OutlinedButton.icon(
-              onPressed: () => update(battle.devAddGold),
-              icon: const Icon(Icons.paid),
-              label: Text(compact ? '+Gold' : '+9999 gold'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => update(battle.devAddGems),
-              icon: const Icon(Icons.diamond),
-              label: Text(compact ? '+Gems' : '+999 gems'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _openDevEffectDialog,
-              icon: const Icon(Icons.bolt),
-              label: Text(compact ? 'Effect' : 'Apply effect'),
-            ),
-            OutlinedButton.icon(
-              onPressed: battle.gameOver || battle.isAnimating
-                  ? null
-                  : _devOpenMerchant,
-              icon: const Icon(Icons.storefront),
-              label: Text(compact ? 'Shop' : 'Open merchant'),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _toggleAutoAttack() async {
+    if (battle.autoAttackEnabled) {
+      update(battle.stopAutoAttack);
+      return;
+    }
+    await _runAutoAttack();
   }
 
   Future<void> _devOpenMerchant() async {
@@ -509,15 +423,17 @@ class _GameScreenState extends State<GameScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Apply dev effect'),
+              title: Text(context.tr(K.applyDevEffect)),
               content: SizedBox(
-                width: 420,
+                width: AppLayout.dialogWidth(context, 420),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<_DevEffectPreset>(
                       value: selectedEffect,
-                      decoration: const InputDecoration(labelText: 'Effect'),
+                      decoration: InputDecoration(
+                        labelText: context.tr(K.effectLabel),
+                      ),
                       items: _devEffectPresets
                           .map(
                             (effect) => DropdownMenuItem(
@@ -534,13 +450,20 @@ class _GameScreenState extends State<GameScreen> {
                     const SizedBox(height: AppLayout.sectionGap),
                     DropdownButtonFormField<Fighter>(
                       value: selectedTarget,
-                      decoration: const InputDecoration(labelText: 'Target'),
+                      decoration: InputDecoration(
+                        labelText: context.tr(K.targetLabel),
+                      ),
                       items: targets
                           .map(
                             (fighter) => DropdownMenuItem(
                               value: fighter,
                               child: Text(
-                                '${fighter.isHero ? 'Ally' : 'Enemy'} - ${fighter.name}',
+                                context.tr(K.targetOption, [
+                                  fighter.isHero
+                                      ? context.tr(K.ally)
+                                      : context.tr(K.enemy),
+                                  fighter.name,
+                                ]),
                               ),
                             ),
                           )
@@ -556,12 +479,12 @@ class _GameScreenState extends State<GameScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
+                  child: Text(context.tr(K.cancel)),
                 ),
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).pop(true),
                   icon: const Icon(Icons.check),
-                  label: const Text('Apply'),
+                  label: Text(context.tr(K.apply)),
                 ),
               ],
             );
@@ -589,217 +512,6 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  Widget _summaryContent() {
-    return Wrap(
-      spacing: AppLayout.panelGap,
-      runSpacing: AppLayout.controlGap,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Text(
-          'Round ${battle.roundCounter}',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        Text(
-          '${battle.heroes.alive.length}/${battle.heroes.members.length} heroes alive'
-          '   ${battle.mobs.alive.length}/${battle.mobs.members.length} enemies alive',
-        ),
-        Text('Gold: ${battle.gold}   Gems: ${battle.gems}'),
-        Text('Enemy faction: ${battle.waveInfo.category.label}'),
-        OutlinedButton.icon(
-          onPressed: _openInventory,
-          icon: const Icon(Icons.inventory_2),
-          label: Text(
-            'Inventory ${battle.healingPotionStock + battle.teamPotionStock + battle.specialPotionStock}',
-          ),
-        ),
-        if (battle.bossWaveIncoming)
-          const _BossWarning(
-            icon: Icons.warning_amber,
-            text: 'Boss wave incoming next',
-          ),
-        if (battle.waveInfo.finalWaveInTheme)
-          const _BossWarning(
-            icon: Icons.local_fire_department,
-            text: 'Boss wave: double reward',
-          ),
-      ],
-    );
-  }
-
-  Widget _compactSummaryContent() {
-    return Wrap(
-      spacing: AppLayout.controlGap,
-      runSpacing: AppLayout.tinyGap,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Text(
-          'R${battle.roundCounter}',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        Text('H ${battle.heroes.alive.length}/${battle.heroes.members.length}'),
-        Text('E ${battle.mobs.alive.length}/${battle.mobs.members.length}'),
-        Text('G ${battle.gold}'),
-        Text('Gem ${battle.gems}'),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          tooltip: 'Inventory',
-          onPressed: _openInventory,
-          icon: Badge.count(
-            count:
-                battle.healingPotionStock +
-                battle.teamPotionStock +
-                battle.specialPotionStock,
-            child: const Icon(Icons.inventory_2),
-          ),
-        ),
-        if (battle.bossWaveIncoming || battle.waveInfo.finalWaveInTheme)
-          Icon(
-            battle.waveInfo.finalWaveInTheme
-                ? Icons.local_fire_department
-                : Icons.warning_amber,
-            color: Theme.of(context).colorScheme.error,
-          ),
-      ],
-    );
-  }
-
-  Widget _merchantPanel() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppLayout.cardPadding),
-        child: _merchantContent(),
-      ),
-    );
-  }
-
-  Widget _merchantContent({VoidCallback? onChanged, VoidCallback? onContinue}) {
-    void merchantUpdate(VoidCallback action) {
-      update(action);
-      onChanged?.call();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Merchant', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: AppLayout.compactGap),
-        Text('Gold: ${battle.gold}'),
-        const SizedBox(height: AppLayout.sectionGap),
-        _MerchantAction(
-          icon: Icons.local_drink,
-          title: 'Small XP potion',
-          subtitle: '+${GameBalance.smallXpPotionAmount} XP',
-          cost: GameBalance.smallXpPotionCost,
-          enabled: battle.canBuySmallXpPotion,
-          onPressed: () => _buyTargetedXpPotion(
-            xp: GameBalance.smallXpPotionAmount,
-            cost: GameBalance.smallXpPotionCost,
-            label: 'Small XP potion',
-            onChanged: onChanged,
-          ),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        _MerchantAction(
-          icon: Icons.local_bar,
-          title: 'Large XP potion',
-          subtitle: '+${GameBalance.largeXpPotionAmount} XP',
-          cost: GameBalance.largeXpPotionCost,
-          enabled: battle.canBuyLargeXpPotion,
-          onPressed: () => _buyTargetedXpPotion(
-            xp: GameBalance.largeXpPotionAmount,
-            cost: GameBalance.largeXpPotionCost,
-            label: 'Large XP potion',
-            onChanged: onChanged,
-          ),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        _MerchantAction(
-          icon: Icons.science,
-          title: 'Super XP potion',
-          subtitle: '+${GameBalance.superXpPotionAmount} XP',
-          cost: GameBalance.superXpPotionCost,
-          enabled: battle.canBuySuperXpPotion,
-          onPressed: () => _buyTargetedXpPotion(
-            xp: GameBalance.superXpPotionAmount,
-            cost: GameBalance.superXpPotionCost,
-            label: 'Super XP potion',
-            onChanged: onChanged,
-          ),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        _MerchantAction(
-          icon: Icons.healing,
-          title: 'Healing potion',
-          subtitle: 'Use now on an injured hero',
-          cost: GameBalance.singlePotionCost,
-          enabled: battle.canBuySinglePotion && battle.hasInjuredHero,
-          onPressed: () => _buyTargetedHealingPotion(onChanged: onChanged),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        OutlinedButton.icon(
-          onPressed: battle.canBuySinglePotion
-              ? () => merchantUpdate(battle.buySinglePotionStock)
-              : null,
-          icon: const Icon(Icons.inventory_2),
-          label: Text(
-            'Stock healing potion - ${GameBalance.singlePotionCost} gold',
-          ),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        _MerchantAction(
-          icon: Icons.groups,
-          title: 'Team potion',
-          subtitle: 'Use now on all injured heroes',
-          cost: GameBalance.teamPotionCost,
-          enabled: battle.canBuyTeamPotion && battle.hasInjuredHero,
-          onPressed: () => merchantUpdate(battle.buyTeamPotion),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        OutlinedButton.icon(
-          onPressed: battle.canBuyTeamPotion
-              ? () => merchantUpdate(battle.buyTeamPotionStock)
-              : null,
-          icon: const Icon(Icons.inventory_2),
-          label: Text('Stock team potion - ${GameBalance.teamPotionCost} gold'),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        _MerchantAction(
-          icon: Icons.auto_awesome,
-          title: 'Special attack potion',
-          subtitle: 'Use now to fully recharge a special',
-          cost: GameBalance.specialPotionCost,
-          enabled: battle.canBuySpecialPotion && _hasRechargeableHero(),
-          onPressed: () => _buyTargetedSpecialPotion(onChanged: onChanged),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        OutlinedButton.icon(
-          onPressed: battle.canBuySpecialPotion
-              ? () => merchantUpdate(battle.buySpecialPotionStock)
-              : null,
-          icon: const Icon(Icons.inventory_2),
-          label: Text(
-            'Stock special potion - ${GameBalance.specialPotionCost} gold',
-          ),
-        ),
-        const SizedBox(height: AppLayout.controlGap),
-        _MerchantAction(
-          icon: Icons.add_chart,
-          title: 'Special bar upgrade',
-          subtitle: 'Adds one extra special charge bar',
-          cost: GameBalance.specialBarUpgradeCost,
-          enabled: battle.canBuySpecialBarUpgrade && _hasHeroWithSkill(),
-          onPressed: () => _buyTargetedSpecialBarUpgrade(onChanged: onChanged),
-        ),
-        const Divider(height: AppLayout.panelGap),
-        OutlinedButton.icon(
-          onPressed: onContinue ?? () => _continueAfterMerchant(),
-          icon: const Icon(Icons.arrow_forward),
-          label: const Text('Continue'),
-        ),
-      ],
-    );
-  }
-
   Future<void> _openMerchantPage() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -807,12 +519,13 @@ class _GameScreenState extends State<GameScreen> {
           return StatefulBuilder(
             builder: (context, setPageState) {
               return Scaffold(
-                appBar: AppBar(title: const Text('Merchant')),
+                appBar: AppBar(title: Text(context.tr(K.merchant))),
                 body: SafeArea(
                   child: ListView(
                     padding: const EdgeInsets.all(AppLayout.pagePadding),
                     children: [
-                      _merchantContent(
+                      _MerchantView(
+                        state: this,
                         onChanged: () => setPageState(() {}),
                         onContinue: () {
                           _continueAfterMerchant();
@@ -872,9 +585,10 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _buyTargetedHealingPotion({VoidCallback? onChanged}) async {
     final hero = await _pickHero(
-      title: 'Healing potion',
+      title: context.tr(K.potionHealing),
       heroes: battle.heroes.alive.where((hero) => hero.hp < hero.maxHp),
-      subtitleFor: (hero) => 'HP ${fmt(hero.hp)}/${fmt(hero.maxHp)}',
+      subtitleFor: (hero) =>
+          context.tr(K.hp, [fmt(hero.hp), fmt(hero.maxHp)]),
     );
     if (hero == null) return;
     update(() => battle.buySinglePotion(hero));
@@ -883,7 +597,7 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _buyTargetedSpecialPotion({VoidCallback? onChanged}) async {
     final hero = await _pickHero(
-      title: 'Special attack potion',
+      title: context.tr(K.potionSpecial),
       heroes: battle.heroes.alive.where((hero) {
         final skill = hero.skill;
         return skill != null && skill.charge < skill.maxCharge;
@@ -897,7 +611,7 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _buyTargetedSpecialBarUpgrade({VoidCallback? onChanged}) async {
     final hero = await _pickHero(
-      title: 'Special bar upgrade',
+      title: context.tr(K.specialBarUpgrade),
       heroes: battle.heroes.alive.where((hero) => hero.skill != null),
       subtitleFor: _specialSubtitle,
     );
@@ -936,12 +650,12 @@ class _GameScreenState extends State<GameScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                'Level ${hero.level}',
+                                context.tr(K.level, [hero.level]),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ),
                             Text(
-                              'XP ${hero.xp}/${hero.xpCap}',
+                              context.tr(K.xpValue, [hero.xp, hero.xpCap]),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
@@ -973,72 +687,10 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Future<void> _openInventory() async {
-    await showDialog<void>(
+  Future<void> _openInventory() {
+    return showDialog<void>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            void useItem(_InventoryItemKind kind, Fighter hero) {
-              final used = _useInventoryItem(kind, hero);
-              if (!used) return;
-              setDialogState(() {});
-            }
-
-            return AlertDialog(
-              title: const Text('Inventory'),
-              content: SizedBox(
-                width: 620,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Wrap(
-                      spacing: AppLayout.controlGap,
-                      runSpacing: AppLayout.controlGap,
-                      children: _inventoryItems()
-                          .map(
-                            (item) => _InventoryDraggable(
-                              item: item,
-                              enabled: item.count > 0,
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: AppLayout.sectionGap),
-                    Text(
-                      'Drop on a hero',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: AppLayout.controlGap),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Wrap(
-                          spacing: AppLayout.controlGap,
-                          runSpacing: AppLayout.controlGap,
-                          children: battle.heroes.members.map((hero) {
-                            return _InventoryHeroTarget(
-                              hero: hero,
-                              canUse: _canUseAnyInventoryItem(hero),
-                              onAccept: useItem,
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (_) => _InventoryDialog(state: this),
     );
   }
 
@@ -1047,47 +699,38 @@ class _GameScreenState extends State<GameScreen> {
       _InventoryItem(
         kind: _InventoryItemKind.healing,
         icon: Icons.healing,
-        label: 'Healing',
+        label: context.tr(K.invHealing),
         count: battle.healingPotionStock,
       ),
       _InventoryItem(
         kind: _InventoryItemKind.team,
         icon: Icons.groups,
-        label: 'Team',
+        label: context.tr(K.invTeam),
         count: battle.teamPotionStock,
       ),
       _InventoryItem(
         kind: _InventoryItemKind.special,
         icon: Icons.auto_awesome,
-        label: 'Special',
+        label: context.tr(K.invSpecial),
         count: battle.specialPotionStock,
       ),
     ];
   }
 
   bool _useInventoryItem(_InventoryItemKind kind, Fighter hero) {
-    if (!hero.isAlive) return false;
-    switch (kind) {
-      case _InventoryItemKind.healing:
-        if (battle.healingPotionStock <= 0 || hero.hp >= hero.maxHp) {
-          return false;
-        }
-        update(() => battle.useHealingPotion(hero));
-        return true;
-      case _InventoryItemKind.team:
-        if (battle.teamPotionStock <= 0 || !battle.hasInjuredHero) return false;
-        update(battle.useTeamPotion);
-        return true;
-      case _InventoryItemKind.special:
-        final skill = hero.skill;
-        if (battle.specialPotionStock <= 0 ||
-            skill == null ||
-            skill.charge >= skill.maxCharge) {
-          return false;
-        }
-        update(() => battle.useSpecialPotion(hero));
-        return true;
+    // The controller methods own all the validation (stock, HP, charge,
+    // alive…) and report whether the item was actually consumed, so the UI
+    // just acts on the result instead of re-checking the same conditions.
+    final used = switch (kind) {
+      _InventoryItemKind.healing => battle.useHealingPotion(hero),
+      _InventoryItemKind.team => battle.useTeamPotion(),
+      _InventoryItemKind.special => battle.useSpecialPotion(hero),
+    };
+    if (used) {
+      setState(() {});
+      _scheduleSave();
     }
+    return used;
   }
 
   bool _canUseAnyInventoryItem(Fighter hero) {
@@ -1116,120 +759,6 @@ class _GameScreenState extends State<GameScreen> {
     return '${skill.name}: ${skill.charge}/${skill.maxCharge}';
   }
 
-  Widget _gridTeamPanel(String title, Team team, bool heroes) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: AppLayout.controlGap),
-        Expanded(
-          child: GridView(
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: AppLayout.fighterCardMaxWidth,
-              mainAxisExtent: heroes
-                  ? AppLayout.heroCardHeight
-                  : AppLayout.enemyCardHeight,
-              crossAxisSpacing: AppLayout.controlGap,
-              mainAxisSpacing: AppLayout.controlGap,
-            ),
-            children: _fighterCards(team, heroes, padded: false),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _compactGridTeamPanel(String title, Team team, bool heroes) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: AppLayout.controlGap),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = _compactTeamColumns(team);
-              final rows = (team.members.length / columns).ceil();
-              final safeRows = rows == 0 ? 1 : rows;
-              final preferredHeight = heroes
-                  ? AppLayout.compactHeroCardHeight
-                  : AppLayout.compactEnemyCardHeight;
-              final availableHeight =
-                  constraints.maxHeight - (safeRows - 1) * AppLayout.controlGap;
-              final cardHeight = (availableHeight / safeRows)
-                  .clamp(heroes ? 68.0 : 54.0, preferredHeight)
-                  .toDouble();
-
-              return GridView(
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  mainAxisExtent: cardHeight,
-                  crossAxisSpacing: AppLayout.controlGap,
-                  mainAxisSpacing: AppLayout.controlGap,
-                ),
-                children: _fighterCards(
-                  team,
-                  heroes,
-                  padded: false,
-                  compact: true,
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  int _compactTeamColumns(Team team) {
-    final size = team.members.length;
-    if (size <= 0) return 1;
-    if (size <= 3) return 1;
-    return 2;
-  }
-
-  List<Widget> _fighterCards(
-    Team team,
-    bool heroes, {
-    bool padded = true,
-    bool compact = false,
-  }) {
-    return team.members.map((fighter) {
-      final canPickHero =
-          heroes &&
-          !battle.autoAttackEnabled &&
-          !battle.merchantAvailable &&
-          fighter.isAlive &&
-          battle.availableHeroes.contains(fighter);
-      final hasActed =
-          heroes && fighter.isAlive && battle.actedHeroes.contains(fighter);
-      final selected =
-          battle.selectedHero == fighter ||
-          battle.activeMob == fighter ||
-          battle.activeMobTarget == fighter ||
-          battle.selectedTarget == fighter;
-      final canToggleTarget = !heroes && battle.canToggleEnemyTarget(fighter);
-      final card = FighterCard(
-        fighter: fighter,
-        selected: selected,
-        pickable: canPickHero,
-        acted: hasActed,
-        compact: compact,
-        showDevInfo: settings.devMode && !heroes,
-        onTap: canPickHero && !battle.isAnimating && !battle.autoAttackEnabled
-            ? () => update(() => battle.selectHero(fighter))
-            : canToggleTarget
-            ? () => update(() => battle.toggleEnemyTarget(fighter))
-            : null,
-      );
-      if (!padded) return card;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: AppLayout.controlGap),
-        child: card,
-      );
-    }).toList();
-  }
 }
 
 final List<_DevEffectPreset> _devEffectPresets = [

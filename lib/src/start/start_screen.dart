@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/heroes.dart';
 import '../game/game_screen.dart';
+import '../l10n/app_localizations.dart';
 import '../models/fighter.dart';
 import '../models/level_up_stat.dart';
 import '../persistence/save_service.dart';
@@ -15,7 +16,6 @@ import '../utils/format.dart';
 part 'hero_progress_tile.dart';
 part 'header_line.dart';
 part 'stat_allocation_dialog.dart';
-part 'stat_helpers.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({
@@ -56,23 +56,31 @@ class _StartScreenState extends State<StartScreen> {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('RogueLite'),
+          title: Text(context.tr(K.appTitle)),
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: AppLayout.pagePadding),
-              child: Center(child: Text('Gemmes: ${widget.progress.gems}')),
+              child: Center(
+                child: Text(context.tr(K.gemsCount, [widget.progress.gems])),
+              ),
             ),
             IconButton(
-              tooltip: 'Reglages',
+              tooltip: context.tr(K.settings),
               onPressed: _openSettings,
               icon: const Icon(Icons.settings),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.play_arrow), text: 'Run'),
-              Tab(icon: Icon(Icons.storefront), text: 'Heros'),
-              Tab(icon: Icon(Icons.upgrade), text: 'Niveaux'),
+              Tab(icon: const Icon(Icons.play_arrow), text: context.tr(K.tabRun)),
+              Tab(
+                icon: const Icon(Icons.storefront),
+                text: context.tr(K.tabHeroes),
+              ),
+              Tab(
+                icon: const Icon(Icons.upgrade),
+                text: context.tr(K.tabLevels),
+              ),
             ],
           ),
         ),
@@ -92,10 +100,13 @@ class _StartScreenState extends State<StartScreen> {
       children: [
         _HeaderLine(
           icon: Icons.groups,
-          title: 'Equipe de depart',
+          title: context.tr(K.startTeamTitle),
           subtitle: widget.progress.hasUnlockedHero
-              ? '${selectedHeroes.length}/${unlocked.length} heros selectionnes'
-              : 'Choisis ton premier hero gratuitement',
+              ? context.tr(K.heroesSelected, [
+                  selectedHeroes.length,
+                  unlocked.length,
+                ])
+              : context.tr(K.chooseFirstHero),
         ),
         const SizedBox(height: AppLayout.sectionGap),
         if (!widget.progress.hasUnlockedHero)
@@ -110,14 +121,14 @@ class _StartScreenState extends State<StartScreen> {
           FilledButton.icon(
             onPressed: selectedHeroes.isEmpty ? null : _startNewRun,
             icon: const Icon(Icons.play_arrow),
-            label: const Text('Lancer une run'),
+            label: Text(context.tr(K.launchRun)),
           ),
           if (widget.battleJson != null) ...[
             const SizedBox(height: AppLayout.controlGap),
             OutlinedButton.icon(
               onPressed: _continueRun,
               icon: const Icon(Icons.history),
-              label: const Text('Continuer la run sauvegardee'),
+              label: Text(context.tr(K.continueSavedRun)),
             ),
           ],
         ],
@@ -131,8 +142,8 @@ class _StartScreenState extends State<StartScreen> {
       children: [
         _HeaderLine(
           icon: Icons.diamond,
-          title: 'Acheter des heros',
-          subtitle: '${PlayerProgress.heroCost} gemmes par hero',
+          title: context.tr(K.buyHeroesTitle),
+          subtitle: context.tr(K.gemsPerHero, [PlayerProgress.heroCost]),
         ),
         const SizedBox(height: AppLayout.sectionGap),
         ...buildHeroRoster().map((hero) {
@@ -157,14 +168,16 @@ class _StartScreenState extends State<StartScreen> {
                         ),
                   icon: Icon(unlocked ? Icons.check : Icons.shopping_bag),
                   label: Text(
-                    unlocked ? 'Debloque' : '${PlayerProgress.heroCost}',
+                    unlocked
+                        ? context.tr(K.unlocked)
+                        : '${PlayerProgress.heroCost}',
                   ),
                 ),
                 if (unlocked)
                   OutlinedButton.icon(
                     onPressed: () => _openStatAllocationDialog(hero),
                     icon: const Icon(Icons.tune),
-                    label: const Text('Stats'),
+                    label: Text(context.tr(K.statsButton)),
                   ),
               ],
             ),
@@ -183,13 +196,14 @@ class _StartScreenState extends State<StartScreen> {
       children: [
         _HeaderLine(
           icon: Icons.trending_up,
-          title: 'Ameliorer les heros',
-          subtitle:
-              'Achete des points. Le prix augmente de ${PlayerProgress.heroLevelCostStep} gemmes a chaque niveau.',
+          title: context.tr(K.upgradeHeroesTitle),
+          subtitle: context.tr(K.upgradeSubtitle, [
+            PlayerProgress.heroLevelCostStep,
+          ]),
         ),
         const SizedBox(height: AppLayout.sectionGap),
         if (unlocked.isEmpty)
-          const Text('Debloque d abord un hero pour l\'ameliorer.')
+          Text(context.tr(K.unlockHeroFirst))
         else
           ...unlocked.map((hero) {
             final level = widget.progress.levelFor(hero.name);
@@ -207,8 +221,8 @@ class _StartScreenState extends State<StartScreen> {
                 icon: const Icon(Icons.add),
                 label: Text(
                   level >= PlayerProgress.maxPermanentHeroLevel
-                      ? 'Max'
-                      : '$cost gemmes',
+                      ? context.tr(K.max)
+                      : context.tr(K.gemsCost, [cost]),
                 ),
               ),
             );
@@ -232,7 +246,7 @@ class _StartScreenState extends State<StartScreen> {
           },
         ),
         icon: const Icon(Icons.flag),
-        label: const Text('Choisir'),
+        label: Text(context.tr(K.choose)),
       ),
     );
   }
@@ -243,7 +257,7 @@ class _StartScreenState extends State<StartScreen> {
     return FilterChip(
       selected: selected,
       avatar: Icon(selected ? Icons.check : Icons.person),
-      label: Text('${hero.name} Lv $level'),
+      label: Text(context.tr(K.heroNameLevel, [hero.name, level])),
       onSelected: (value) {
         setState(() {
           if (value) {

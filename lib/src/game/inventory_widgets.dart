@@ -1,5 +1,80 @@
 part of 'game_screen.dart';
 
+/// Drag-and-drop inventory dialog: drag a potion chip onto a hero to use it.
+/// Mutation + persistence live in [_GameScreenState]; this only refreshes
+/// itself after a successful use.
+class _InventoryDialog extends StatefulWidget {
+  const _InventoryDialog({required this.state});
+
+  final _GameScreenState state;
+
+  @override
+  State<_InventoryDialog> createState() => _InventoryDialogState();
+}
+
+class _InventoryDialogState extends State<_InventoryDialog> {
+  _GameScreenState get state => widget.state;
+  BattleController get battle => state.battle;
+
+  void _useItem(_InventoryItemKind kind, Fighter hero) {
+    if (state._useInventoryItem(kind, hero)) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.tr(K.inventory)),
+      content: SizedBox(
+        width: AppLayout.dialogWidth(context, 620),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(
+              spacing: AppLayout.controlGap,
+              runSpacing: AppLayout.controlGap,
+              children: state
+                  ._inventoryItems()
+                  .map(
+                    (item) =>
+                        _InventoryDraggable(item: item, enabled: item.count > 0),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: AppLayout.sectionGap),
+            Text(
+              context.tr(K.dropOnHero),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: AppLayout.controlGap),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: AppLayout.controlGap,
+                  runSpacing: AppLayout.controlGap,
+                  children: battle.heroes.members.map((hero) {
+                    return _InventoryHeroTarget(
+                      hero: hero,
+                      canUse: state._canUseAnyInventoryItem(hero),
+                      onAccept: _useItem,
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.tr(K.close)),
+        ),
+      ],
+    );
+  }
+}
+
 enum _InventoryItemKind { healing, team, special }
 
 class _InventoryItem {
@@ -65,7 +140,7 @@ class _InventoryChip extends StatelessWidget {
           children: [
             Icon(item.icon, size: AppLayout.iconMedium),
             const SizedBox(width: AppLayout.controlGap),
-            Text('${item.label} x${item.count}'),
+            Text(context.tr(K.invItemCount, [item.label, item.count])),
           ],
         ),
       ),
@@ -118,10 +193,13 @@ class _InventoryHeroTarget extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: AppLayout.tinyGap),
-                Text('HP ${fmt(hero.hp)}/${fmt(hero.maxHp)}'),
+                Text(context.tr(K.hp, [fmt(hero.hp), fmt(hero.maxHp)])),
                 if (hero.skill != null)
                   Text(
-                    '${hero.skill!.charge}/${hero.skill!.maxCharge} special',
+                    context.tr(K.specialCount, [
+                      hero.skill!.charge,
+                      hero.skill!.maxCharge,
+                    ]),
                   ),
               ],
             ),
