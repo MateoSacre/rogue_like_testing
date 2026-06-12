@@ -1,9 +1,7 @@
-import 'dart:math';
-
 import '../../models/enums.dart';
 import '../../models/fighter.dart';
 import '../../models/skill.dart';
-import '../../utils/format.dart';
+import '../../models/skill_preview.dart';
 import '../targeting.dart';
 import 'battle_state.dart';
 
@@ -87,25 +85,20 @@ mixin SelectionMixin on BattleControllerBase {
 
   // ── Damage / heal preview ─────────────────────────────────────────────────
 
-  String previewForTarget(Fighter target) {
+  SkillPreview previewForTarget(Fighter target) {
     final hero = selectedHero;
-    if (hero == null) return '';
+    if (hero == null) return const SkillPreview.none();
     if (actionMode == ActionMode.attack) {
-      return 'DMG ${fmt(computeDamagePreview(hero, target))}';
+      return SkillPreview.damage(computeDamagePreview(hero, target));
     }
     final skill = hero.skill;
-    if (skill == null || !skill.isReady) return '';
-    return switch (skill.name) {
-      'Power slash' => 'DMG ${fmt(computeDamagePreview(hero, target, modifier: 3))}',
-      'Power Strike' => 'DMG ${fmt(computeDamagePreview(hero, target, modifier: 2))}',
-      'Deep cut' => 'DMG ${fmt(computeDamagePreview(hero, target))} + bleed 5/turn',
-      'Poison Arrow' => 'DMG ${fmt(computeDamagePreview(hero, target))} + poison 2/turn',
-      'Nuke' => 'DMG ${fmt(min(target.hp, hero.attackPower * 3))}',
-      'Triple Beam' => 'DMG ${fmt(min(target.hp, 16))}',
-      'Magic Healing' => 'HEAL ${fmt(target.maxHp * .30)}',
-      'Protect' => '+10 DEF',
-      _ => skill.targetsEnemies ? 'DMG ${fmt(computeDamagePreview(hero, target))}' : '',
-    };
+    if (skill == null || !skill.isReady) return const SkillPreview.none();
+    // Each skill describes its own expected effect; no name-based lookup.
+    final builder = skill.preview;
+    if (builder != null) return builder(this, hero, target);
+    return skill.targetsEnemies
+        ? SkillPreview.damage(computeDamagePreview(hero, target))
+        : const SkillPreview.none();
   }
 
   // ── Internal helpers ──────────────────────────────────────────────────────

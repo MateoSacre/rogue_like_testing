@@ -187,6 +187,14 @@ enum K {
   fxTurnRemaining, // singular
   fxTurnsRemaining, // '{0} tours restants'
   fxLine, // '{0} : {1}. {2}.'
+
+  // Target previews
+  previewDamage, // 'DMG {0}'
+  previewDamageDot, // 'DMG {0} + {1} {2}/tour'
+  previewHeal, // 'SOIN {0}'
+  previewDefence, // '+{0} DEF'
+  dotBleed,
+  dotPoison,
 }
 
 const Map<K, String> _fr = {
@@ -355,6 +363,13 @@ const Map<K, String> _fr = {
   K.fxTurnRemaining: '1 tour restant',
   K.fxTurnsRemaining: '{0} tours restants',
   K.fxLine: '{0} : {1}. {2}.',
+
+  K.previewDamage: 'DMG {0}',
+  K.previewDamageDot: 'DMG {0} + {1} {2}/tour',
+  K.previewHeal: 'SOIN {0}',
+  K.previewDefence: '+{0} DEF',
+  K.dotBleed: 'saignement',
+  K.dotPoison: 'poison',
 };
 
 const Map<K, String> _en = {
@@ -519,6 +534,13 @@ const Map<K, String> _en = {
   K.fxTurnRemaining: '1 turn remaining',
   K.fxTurnsRemaining: '{0} turns remaining',
   K.fxLine: '{0}: {1}. {2}.',
+
+  K.previewDamage: 'DMG {0}',
+  K.previewDamageDot: 'DMG {0} + {1} {2}/turn',
+  K.previewHeal: 'HEAL {0}',
+  K.previewDefence: '+{0} DEF',
+  K.dotBleed: 'bleed',
+  K.dotPoison: 'poison',
 };
 
 const Map<AppLanguage, Map<K, String>> _dictionaries = {

@@ -4,6 +4,7 @@ import '../models/battle_actions.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/skill.dart';
+import '../models/skill_preview.dart';
 import '../models/status_effect.dart';
 import '../utils/format.dart';
 import '../game/game_balance.dart';
@@ -48,6 +49,9 @@ Skill powerStrikeSkill({
       }
       return true;
     },
+    preview: (battle, caster, target) => SkillPreview.damage(
+      battle.computeDamagePreview(caster, target, modifier: modifier),
+    ),
     apply: (battle, caster, targets) {
       for (final target in targets) {
         battle.basicAttack(caster, target, modifier: modifier);
@@ -62,12 +66,18 @@ Skill powerSlashSkill() {
 }
 
 Skill deepCutSkill() {
+  const bleedDamage = 5.0;
   return Skill(
     name: 'Deep cut',
     chargeMax: 4,
     targetType: TargetType.enemySingleHighestHp,
     description: 'Attack and bleed the highest HP enemy',
     appliesNegativeEffect: true,
+    preview: (battle, caster, target) => SkillPreview.damage(
+      battle.computeDamagePreview(caster, target),
+      dot: SkillPreviewDot.bleed,
+      dotDamage: bleedDamage,
+    ),
     apply: (battle, caster, targets) {
       for (final target in targets) {
         battle.basicAttack(caster, target);
@@ -76,7 +86,7 @@ Skill deepCutSkill() {
             name: 'Deep cut',
             kind: EffectKind.recurrent,
             duration: 5,
-            damage: 5,
+            damage: bleedDamage,
           ),
         );
         battle.addLog('${target.name} is bleeding');
@@ -97,6 +107,11 @@ Skill poisonArrowSkill({
     targetType: targetType,
     description: 'Attack and poison a target',
     appliesNegativeEffect: true,
+    preview: (battle, caster, target) => SkillPreview.damage(
+      battle.computeDamagePreview(caster, target),
+      dot: SkillPreviewDot.poison,
+      dotDamage: damage,
+    ),
     apply: (battle, caster, targets) {
       for (final target in targets) {
         battle.basicAttack(caster, target);
@@ -127,21 +142,27 @@ Skill explosionSkill({
   double? damage,
   bool isMultiplier = false,
 }) {
+  // Explosion damage ignores defence, so apply and preview share this.
+  double amountFor(Fighter caster) {
+    return isMultiplier
+        ? caster.attackPower * (damage ?? 1.5)
+        : (damage ?? caster.attackPower * 1.5);
+  }
+
   return Skill(
     name: name,
     chargeMax: cooldown,
     targetType: targetType,
     description: 'Area damage',
     shouldUse: (_, targets) => targets.length > 1,
+    preview: (battle, caster, target) =>
+        SkillPreview.damage(min(target.hp, amountFor(caster))),
     apply: (battle, caster, targets) {
       final trueTargets = targetCount == null
           ? targets
           : targets.take(targetCount).toList();
       for (final target in trueTargets) {
-        final amount = isMultiplier
-            ? caster.attackPower * (damage ?? 1.5)
-            : (damage ?? caster.attackPower * 1.5);
-        final dealt = target.takeDamage(amount);
+        final dealt = target.takeDamage(amountFor(caster));
         battle.addLog(
           '${caster.name} uses $name on ${target.name} for ${fmt(dealt)} dmg',
         );
@@ -177,6 +198,7 @@ Skill splashSkill() {
     targetType: TargetType.enemyTeam,
     description: 'Deals 1 damage to all enemies',
     shouldUse: (_, targets) => targets.length > 1,
+    preview: (battle, caster, target) => SkillPreview.damage(min(target.hp, 1)),
     apply: (battle, caster, targets) {
       for (final target in targets) {
         final dealt = target.takeDamage(1);
@@ -189,6 +211,7 @@ Skill splashSkill() {
 }
 
 Skill magicHealingSkill() {
+  const healRatio = .30;
   return Skill(
     name: 'Magic Healing',
     chargeMax: 3,
@@ -196,9 +219,11 @@ Skill magicHealingSkill() {
     description: 'Heal the weakest ally for 30%',
     shouldUse: (_, targets) =>
         targets.isNotEmpty && targets.first.hp < targets.first.maxHp,
+    preview: (battle, caster, target) =>
+        SkillPreview.heal(target.maxHp * healRatio),
     apply: (battle, caster, targets) {
       for (final target in targets) {
-        final healed = target.heal(target.maxHp * .30);
+        final healed = target.heal(target.maxHp * healRatio);
         battle.addLog(
           '${caster.name} heals ${target.name} for ${fmt(healed)} hp',
         );
@@ -207,12 +232,16 @@ Skill magicHealingSkill() {
   );
 }
 
+const _protectDefenceBonus = 10.0;
+
 Skill protectSkill() {
   return Skill(
     name: 'Protect',
     chargeMax: 3,
     targetType: TargetType.allySingleLowestHp,
     description: 'Give +10 defence for 3 turns',
+    preview: (battle, caster, target) =>
+        const SkillPreview.defence(_protectDefenceBonus),
     apply: (battle, caster, targets) {
       _applyProtection(battle, caster, targets);
     },
@@ -234,7 +263,7 @@ void _applyProtection(
           name: 'Protect',
           kind: EffectKind.buff,
           duration: 3,
-          defenceBonus: 10,
+          defenceBonus: _protectDefenceBonus,
         ),
       );
       battle.addLog('${caster.name} protects ${target.name}');

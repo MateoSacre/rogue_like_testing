@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/level_up_stat.dart';
+import '../models/skill_preview.dart';
 import '../models/status_effect.dart';
 import '../models/team.dart';
 import '../persistence/save_service.dart';
@@ -430,7 +431,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<_DevEffectPreset>(
-                      value: selectedEffect,
+                      initialValue: selectedEffect,
                       decoration: InputDecoration(
                         labelText: context.tr(K.effectLabel),
                       ),
@@ -449,7 +450,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: AppLayout.sectionGap),
                     DropdownButtonFormField<Fighter>(
-                      value: selectedTarget,
+                      initialValue: selectedTarget,
                       decoration: InputDecoration(
                         labelText: context.tr(K.targetLabel),
                       ),

@@ -96,6 +96,7 @@ abstract class BattleControllerBase implements BattleActions {
 
   // CombatMixin
   double computeAttackDamage(Fighter attacker, Fighter target, {double modifier = 1});
+  @override
   double computeDamagePreview(Fighter attacker, Fighter target, {double modifier = 1});
   void applyEffectsOnTurnStart(Fighter fighter);
   void removeBuffs(Team team);

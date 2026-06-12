@@ -18,6 +18,15 @@ class FakeBattle implements BattleActions {
     attacks.add('${attacker.name}->${target.name} x$modifier');
     target.takeDamage(attacker.attackPower * modifier);
   }
+
+  @override
+  double computeDamagePreview(
+    Fighter attacker,
+    Fighter target, {
+    double modifier = 1,
+  }) {
+    return attacker.attackPower * modifier;
+  }
 }
 
 void main() {

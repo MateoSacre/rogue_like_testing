@@ -2,7 +2,7 @@ name: flutter_testing_shit
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 0.3.0
+version: 0.3.1
 
 environment:
   sdk: ^3.9.0
@@ -13,6 +13,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   flutter_launcher_icons: ^0.14.4
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
