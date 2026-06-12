@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
+import '../models/item.dart';
 import '../models/skill.dart';
 import '../models/status_effect.dart';
 import '../theme/app_colors.dart';
@@ -10,6 +11,8 @@ import '../theme/app_layout.dart';
 import '../utils/format.dart';
 
 part 'compact_progress_line.dart';
+
+part 'item_badges.dart';
 
 part 'skill_charge_bar.dart';
 
@@ -122,6 +125,14 @@ class FighterCard extends StatelessWidget {
                             ),
                             if (showDevInfo && !fighter.isHero)
                               Text(context.tr(K.aiInfo, [fighter.aiType.name])),
+                            if (fighter.itemCount > 0)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: _ItemBadges(
+                                  fighter: fighter,
+                                  compact: true,
+                                ),
+                              ),
                             if (fighter.isHero)
                               _CompactProgressLine(
                                 label: context.tr(K.lvlXpCompact, [
@@ -235,6 +246,13 @@ class FighterCard extends StatelessWidget {
                             fmt(fighter.defence),
                           ]),
                         ),
+                        if (fighter.itemCount > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: AppLayout.tinyGap,
+                            ),
+                            child: _ItemBadges(fighter: fighter),
+                          ),
                         if (showDevInfo && !fighter.isHero)
                           Text(
                             context.tr(K.aiInfo, [fighter.aiType.name]),

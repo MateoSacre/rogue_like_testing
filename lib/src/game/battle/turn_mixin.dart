@@ -83,7 +83,10 @@ mixin TurnMixin on BattleControllerBase {
     for (final mob in mobs.alive) {
       if (heroes.isDefeated) break;
       applyEffectsOnTurnStart(mob);
-      if (!mob.isAlive) continue;
+      if (!mob.isAlive) {
+        rewardDotKill(mob);
+        continue;
+      }
 
       final skill = mob.skill;
       if (skill != null && skill.isReady) {

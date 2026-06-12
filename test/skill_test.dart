@@ -27,6 +27,11 @@ class FakeBattle implements BattleActions {
   }) {
     return attacker.attackPower * modifier;
   }
+
+  @override
+  double skillDamage(Fighter attacker, Fighter target, double amount) {
+    return target.takeDamage(amount);
+  }
 }
 
 void main() {

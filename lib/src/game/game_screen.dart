@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/items.dart';
 import '../l10n/app_localizations.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
+import '../models/item.dart';
 import '../models/level_up_stat.dart';
 import '../models/skill_preview.dart';
 import '../models/status_effect.dart';
@@ -25,6 +27,7 @@ part 'battle_summary.dart';
 part 'boss_warning.dart';
 part 'dev_tools_panel.dart';
 part 'inventory_widgets.dart';
+part 'item_drop_dialog.dart';
 part 'level_up_dialog.dart';
 part 'merchant_action.dart';
 part 'merchant_view.dart';
@@ -221,6 +224,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       levelUpMode: settings.levelUpMode,
     );
     await _resolvePendingLevelUps();
+    await _resolvePendingItemDrops();
     _refresh();
   }
 
@@ -396,6 +400,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       levelUpMode: settings.levelUpMode,
     );
     await _resolvePendingLevelUps();
+    await _resolvePendingItemDrops();
     _refresh();
   }
 
@@ -513,6 +518,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _resolvePendingItemDrops() async {
+    while (mounted && battle.pendingItemDrops.isNotEmpty) {
+      final pending = battle.pendingItemDrops.first;
+      if (battle.gameOver) {
+        // Run is over: items are per-run, silently sell what's left.
+        update(() => battle.resolvePendingItemDrop(pending));
+        continue;
+      }
+      final choice = await showDialog<_ItemDropChoice>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return _ItemDropDialog(def: pending.def, heroes: battle.heroes.alive);
+        },
+      );
+      if (choice == null) return;
+      update(() => battle.resolvePendingItemDrop(pending, hero: choice.hero));
+    }
+  }
+
   Future<void> _openMerchantPage() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -563,6 +588,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       levelUpMode: settings.levelUpMode,
     );
     await _resolvePendingLevelUps();
+    await _resolvePendingItemDrops();
     _refresh();
   }
 

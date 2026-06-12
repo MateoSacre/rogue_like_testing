@@ -37,6 +37,12 @@ class AppColors {
   static const skillCharge = Color(0xffc73d3d);
   static const xpProgress = Color(0xff2375d1);
 
+  // Item rarity colors, Risk of Rain 2 inspired.
+  static const itemCommon = Color(0xff78909c);
+  static const itemUncommon = Color(0xff2e7d32);
+  static const itemLegendary = Color(0xffc62828);
+  static const itemBoss = Color(0xffb26a00);
+
   static Color warningBackground(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
         ? const Color(0xff4a321c)

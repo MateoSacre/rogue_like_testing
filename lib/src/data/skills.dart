@@ -162,7 +162,7 @@ Skill explosionSkill({
           ? targets
           : targets.take(targetCount).toList();
       for (final target in trueTargets) {
-        final dealt = target.takeDamage(amountFor(caster));
+        final dealt = battle.skillDamage(caster, target, amountFor(caster));
         battle.addLog(
           '${caster.name} uses $name on ${target.name} for ${fmt(dealt)} dmg',
         );
@@ -201,7 +201,7 @@ Skill splashSkill() {
     preview: (battle, caster, target) => SkillPreview.damage(min(target.hp, 1)),
     apply: (battle, caster, targets) {
       for (final target in targets) {
-        final dealt = target.takeDamage(1);
+        final dealt = battle.skillDamage(caster, target, 1);
         battle.addLog(
           '${caster.name} splashes ${target.name} for ${fmt(dealt)} dmg',
         );

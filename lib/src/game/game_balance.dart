@@ -13,7 +13,7 @@ class GameBalance {
   /// A wave that is still unresolved after this many rounds is decided by
   /// comparing the two teams' HP ratio (highest ratio wins the wave).
   /// Prevents endless stalemates.
-  static const maxRoundsPerWave = 20;
+  static const maxRoundsPerWave = 50;
   static const waveValueOffset = 0; //10
   static const waveRewardMultiplier = 10;
   static const killXpDivisor = 3;
@@ -33,6 +33,18 @@ class GameBalance {
   static const superXpPotionAmount = 460;
   static const finalThemeWaveRewardMultiplier = 2;
   static const postWaveHealRatio = .10;
+
+  /// Item drops: 1-in-N chance per non-boss mob kill. Bosses always drop
+  /// their category item.
+  static const itemDropChanceDivisor = 8;
+
+  /// Rarity roll out of 100 for standard drops: < uncommon threshold is
+  /// common, < legendary threshold is uncommon, the rest is legendary.
+  static const itemUncommonThreshold = 75;
+  static const itemLegendaryThreshold = 95;
+
+  /// Hard cap on the summed double-strike chance from items.
+  static const extraAttackChanceCap = .80;
 
   static const baseXpCap = 100.0;
   static const xpCapBaseMultiplier = 1.02;

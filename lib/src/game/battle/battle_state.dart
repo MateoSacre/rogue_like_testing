@@ -3,6 +3,7 @@ import 'dart:math';
 import '../../models/battle_actions.dart';
 import '../../models/enums.dart';
 import '../../models/fighter.dart';
+import '../../models/item.dart';
 import '../../models/level_up_stat.dart';
 import '../../models/skill.dart';
 import '../../models/team.dart';
@@ -38,6 +39,7 @@ abstract class BattleControllerBase implements BattleActions {
 
   // ── Turn tracking ─────────────────────────────────────────────────────────
   final List<PendingLevelUp> pendingLevelUps = [];
+  final List<PendingItemDrop> pendingItemDrops = [];
   final Set<Fighter> actedHeroes = {};
   final Set<Fighter> rewardedMobs = {};
 
@@ -101,6 +103,10 @@ abstract class BattleControllerBase implements BattleActions {
   void applyEffectsOnTurnStart(Fighter fighter);
   void removeBuffs(Team team);
   void rewardDefeatedMobs(Fighter attacker);
+  void rewardDotKill(Fighter mob);
+
+  // ItemsMixin
+  void rollItemDrop(Fighter mob);
 
   // LevelingMixin
   void gainXp(Fighter hero, int xp, LevelUpMode levelUpMode);

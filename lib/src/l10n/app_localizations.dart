@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../models/enums.dart';
+import '../models/item.dart';
 import '../models/level_up_stat.dart';
 import '../settings/game_settings.dart';
 import 'app_language.dart';
@@ -195,6 +196,23 @@ enum K {
   previewDefence, // '+{0} DEF'
   dotBleed,
   dotPoison,
+
+  // Items
+  itemFound, // 'Objet trouvé !'
+  itemGiveTo, // 'Donner à un héros :'
+  itemReplaces, // 'Remplace : {0}'
+  itemSlotEmpty, // 'Emplacement libre'
+  itemRelicCount, // 'Reliques : {0}'
+  itemSellFor, // 'Vendre — {0} or'
+  slotHelmet,
+  slotGloves,
+  slotChest,
+  slotWeapon,
+  slotRelic,
+  rarityCommon,
+  rarityUncommon,
+  rarityLegendary,
+  rarityBoss,
 }
 
 const Map<K, String> _fr = {
@@ -370,6 +388,22 @@ const Map<K, String> _fr = {
   K.previewDefence: '+{0} DEF',
   K.dotBleed: 'saignement',
   K.dotPoison: 'poison',
+
+  K.itemFound: 'Objet trouvé !',
+  K.itemGiveTo: 'Donner à un héros :',
+  K.itemReplaces: 'Remplace : {0}',
+  K.itemSlotEmpty: 'Emplacement libre',
+  K.itemRelicCount: 'Reliques : {0}',
+  K.itemSellFor: 'Vendre — {0} or',
+  K.slotHelmet: 'Casque',
+  K.slotGloves: 'Gants',
+  K.slotChest: 'Armure',
+  K.slotWeapon: 'Arme',
+  K.slotRelic: 'Relique',
+  K.rarityCommon: 'Commun',
+  K.rarityUncommon: 'Rare',
+  K.rarityLegendary: 'Légendaire',
+  K.rarityBoss: 'Boss',
 };
 
 const Map<K, String> _en = {
@@ -541,6 +575,22 @@ const Map<K, String> _en = {
   K.previewDefence: '+{0} DEF',
   K.dotBleed: 'bleed',
   K.dotPoison: 'poison',
+
+  K.itemFound: 'Item found!',
+  K.itemGiveTo: 'Give to a hero:',
+  K.itemReplaces: 'Replaces: {0}',
+  K.itemSlotEmpty: 'Empty slot',
+  K.itemRelicCount: 'Relics: {0}',
+  K.itemSellFor: 'Sell — {0} gold',
+  K.slotHelmet: 'Helmet',
+  K.slotGloves: 'Gloves',
+  K.slotChest: 'Armor',
+  K.slotWeapon: 'Weapon',
+  K.slotRelic: 'Relic',
+  K.rarityCommon: 'Common',
+  K.rarityUncommon: 'Uncommon',
+  K.rarityLegendary: 'Legendary',
+  K.rarityBoss: 'Boss',
 };
 
 const Map<AppLanguage, Map<K, String>> _dictionaries = {
@@ -633,6 +683,28 @@ class AppLocalizations extends InheritedWidget {
       LevelUpStat.maxHp => t(K.statHp),
       LevelUpStat.attack => t(K.statAtk),
       LevelUpStat.defence => t(K.statDef),
+    };
+  }
+
+  /// Resolves an item's FR/EN text pair for the current language.
+  String localized(LocalizedText text) => text.of(language);
+
+  String itemSlot(ItemSlot slot) {
+    return switch (slot) {
+      ItemSlot.helmet => t(K.slotHelmet),
+      ItemSlot.gloves => t(K.slotGloves),
+      ItemSlot.chest => t(K.slotChest),
+      ItemSlot.weapon => t(K.slotWeapon),
+      ItemSlot.relic => t(K.slotRelic),
+    };
+  }
+
+  String itemRarity(ItemRarity rarity) {
+    return switch (rarity) {
+      ItemRarity.common => t(K.rarityCommon),
+      ItemRarity.uncommon => t(K.rarityUncommon),
+      ItemRarity.legendary => t(K.rarityLegendary),
+      ItemRarity.boss => t(K.rarityBoss),
     };
   }
 

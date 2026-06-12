@@ -10,6 +10,7 @@ import 'battle/battle_state.dart';
 import 'battle/combat_mixin.dart';
 import 'battle/dev_mixin.dart';
 import 'battle/inventory_mixin.dart';
+import 'battle/items_mixin.dart';
 import 'battle/leveling_mixin.dart';
 import 'battle/selection_mixin.dart';
 import 'battle/turn_mixin.dart';
@@ -34,6 +35,7 @@ class BattleController extends BattleControllerBase
         TurnMixin,
         AutoAttackMixin,
         InventoryMixin,
+        ItemsMixin,
         SelectionMixin,
         DevMixin {
   BattleController({
@@ -88,6 +90,7 @@ class BattleController extends BattleControllerBase
     autoAttackWasEnabledOnGameOver = false;
     log.clear();
     pendingLevelUps.clear();
+    pendingItemDrops.clear();
     startNextWave();
   }
 
@@ -172,6 +175,7 @@ class BattleController extends BattleControllerBase
     isAutoAttackRunning = false;
     autoAttackWasEnabledOnGameOver = false;
     pendingLevelUps.clear();
+    pendingItemDrops.clear();
     log
       ..clear()
       ..addAll((json['log'] as List<dynamic>? ?? const []).whereType<String>());

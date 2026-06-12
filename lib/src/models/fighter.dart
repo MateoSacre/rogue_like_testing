@@ -1,8 +1,10 @@
 import 'dart:math';
 
+import '../data/items.dart';
 import '../data/skills.dart';
 import '../game/game_balance.dart';
 import 'enums.dart';
+import 'item.dart';
 import 'skill.dart';
 import 'status_effect.dart';
 
@@ -39,7 +41,46 @@ class Fighter {
   int xp = 0;
   final List<StatusEffect> effects = [];
 
+  /// Equipped items, one per slot (helmet/gloves/chest/weapon). Their stat
+  /// bonuses are baked into the fighter's stats at equip time; the ids are
+  /// kept for display, replacement math and dynamic effects.
+  final Map<ItemSlot, String> equipment = {};
+
+  /// Stackable relic item ids (including boss items).
+  final List<String> relics = [];
+
   bool get isAlive => hp > 0;
+
+  int get itemCount => equipment.length + relics.length;
+
+  /// Definitions of everything currently held (equipment + relics).
+  Iterable<ItemDef> get heldItems sync* {
+    for (final id in equipment.values) {
+      final def = itemById(id);
+      if (def != null) yield def;
+    }
+    for (final id in relics) {
+      final def = itemById(id);
+      if (def != null) yield def;
+    }
+  }
+
+  /// Chance (0..1) to strike a second time, summed over held items.
+  double get extraAttackChance {
+    final total = heldItems.fold<double>(
+      0,
+      (sum, item) => sum + item.extraAttackChance,
+    );
+    return min(total, GameBalance.extraAttackChanceCap);
+  }
+
+  /// Fraction of dealt damage returned as healing, summed over held items.
+  double get lifesteal =>
+      heldItems.fold<double>(0, (sum, item) => sum + item.lifesteal);
+
+  /// All on-hit effects carried by held items.
+  Iterable<ItemOnHit> get onHitEffects =>
+      heldItems.map((item) => item.onHit).whereType<ItemOnHit>();
 
   double get defence {
     final bonus = effects
@@ -107,6 +148,8 @@ class Fighter {
       newFighter.xp = xp;
       newFighter.level = level;
     }
+    newFighter.equipment.addAll(equipment);
+    newFighter.relics.addAll(relics);
     return newFighter;
   }
 
@@ -127,6 +170,8 @@ class Fighter {
       'level': level,
       'xp': xp,
       'effects': effects.map((effect) => effect.toJson()).toList(),
+      'equipment': equipment.map((slot, id) => MapEntry(slot.name, id)),
+      'relics': relics,
     };
   }
 
@@ -158,6 +203,23 @@ class Fighter {
     final effects = json['effects'] as List<dynamic>? ?? const [];
     fighter.effects.addAll(
       effects.whereType<Map<String, dynamic>>().map(StatusEffect.fromJson),
+    );
+    // Stat bonuses are already baked into the saved stats; only restore ids.
+    final equipment = json['equipment'] as Map<String, dynamic>? ?? const {};
+    for (final entry in equipment.entries) {
+      final slot = ItemSlot.values.firstWhere(
+        (slot) => slot.name == entry.key,
+        orElse: () => ItemSlot.relic,
+      );
+      final id = entry.value as String?;
+      if (slot != ItemSlot.relic && id != null && itemById(id) != null) {
+        fighter.equipment[slot] = id;
+      }
+    }
+    fighter.relics.addAll(
+      (json['relics'] as List<dynamic>? ?? const [])
+          .whereType<String>()
+          .where((id) => itemById(id) != null),
     );
     return fighter;
   }
