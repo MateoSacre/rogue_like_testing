@@ -12,17 +12,20 @@ import 'package:flutter_testing_shit/src/settings/game_settings.dart';
 
 Widget _host(GameSettings settings) {
   return MaterialApp(
-    home: AppLocalizations(
+    // Same setup as production (app.dart): the builder wraps the Navigator,
+    // so dialogs pushed on the root navigator can also read AppLocalizations.
+    builder: (context, child) => AppLocalizations(
       language: settings.language,
-      child: GameScreen(
-        settings: settings,
-        progress: PlayerProgress.initial(),
-        initialHeroes: buildBaseTeam(),
-        onSettingsChanged: (_) {},
-        onProgressChanged: (_) {},
-        onBattleSaved: (_) {},
-        onResetProgress: () async {},
-      ),
+      child: child ?? const SizedBox.shrink(),
+    ),
+    home: GameScreen(
+      settings: settings,
+      progress: PlayerProgress.initial(),
+      initialHeroes: buildBaseTeam(),
+      onSettingsChanged: (_) {},
+      onProgressChanged: (_) {},
+      onBattleSaved: (_) {},
+      onResetProgress: () async {},
     ),
   );
 }
@@ -71,6 +74,24 @@ void main() {
     // Team panel titles are translated.
     expect(find.text('Heroes'), findsOneWidget);
     expect(find.text('Enemies'), findsOneWidget);
+  });
+
+  testWidgets('long-press on a hero card opens the character sheet', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_host(const GameSettings()));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('Paladin').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Statistiques'), findsOneWidget);
+    expect(find.text('Stats de combat'), findsOneWidget);
+    expect(find.text('Équipement'), findsOneWidget);
+
+    await tester.tap(find.text('Fermer'));
+    await tester.pumpAndSettle();
+    expect(find.text('Statistiques'), findsNothing);
   });
 
   testWidgets('wide layout + dev mode renders full cards without overflow', (

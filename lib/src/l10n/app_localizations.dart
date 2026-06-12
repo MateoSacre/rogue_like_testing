@@ -197,6 +197,21 @@ enum K {
   dotBleed,
   dotPoison,
 
+  // Character sheet
+  sheetStats, // 'Statistiques'
+  sheetCombat, // 'Stats de combat'
+  sheetEffects, // 'Effets actifs'
+  sheetNoEffects,
+  sheetEquipment, // 'Équipement'
+  sheetNoItems,
+  sheetSkill, // 'Compétence'
+  sheetCrit, // 'Critique : {0}% (dégâts ×{1})'
+  sheetDoubleStrike, // 'Double frappe : {0}%'
+  sheetLifesteal, // 'Vol de vie : {0}%'
+  sheetOnHit, // '{0} à l'attaque : {1}% ({2} dégâts/tour, {3} tours)'
+  sheetCumulative, // 'Cumulé ×{0} :'
+  dotBurn,
+
   // Items
   itemFound, // 'Objet trouvé !'
   itemGiveTo, // 'Donner à un héros :'
@@ -389,6 +404,20 @@ const Map<K, String> _fr = {
   K.dotBleed: 'saignement',
   K.dotPoison: 'poison',
 
+  K.sheetStats: 'Statistiques',
+  K.sheetCombat: 'Stats de combat',
+  K.sheetEffects: 'Effets actifs',
+  K.sheetNoEffects: 'Aucun effet actif',
+  K.sheetEquipment: 'Équipement',
+  K.sheetNoItems: 'Aucun objet',
+  K.sheetSkill: 'Compétence',
+  K.sheetCrit: 'Critique : {0}% (dégâts ×{1})',
+  K.sheetDoubleStrike: 'Double frappe : {0}%',
+  K.sheetLifesteal: 'Vol de vie : {0}%',
+  K.sheetOnHit: '{0} à l\'attaque : {1}% ({2} dégâts/tour, {3} tours)',
+  K.sheetCumulative: 'Cumulé ×{0} :',
+  K.dotBurn: 'brûlure',
+
   K.itemFound: 'Objet trouvé !',
   K.itemGiveTo: 'Donner à un héros :',
   K.itemReplaces: 'Remplace : {0}',
@@ -575,6 +604,20 @@ const Map<K, String> _en = {
   K.previewDefence: '+{0} DEF',
   K.dotBleed: 'bleed',
   K.dotPoison: 'poison',
+
+  K.sheetStats: 'Statistics',
+  K.sheetCombat: 'Combat stats',
+  K.sheetEffects: 'Active effects',
+  K.sheetNoEffects: 'No active effect',
+  K.sheetEquipment: 'Equipment',
+  K.sheetNoItems: 'No items',
+  K.sheetSkill: 'Skill',
+  K.sheetCrit: 'Critical: {0}% (damage ×{1})',
+  K.sheetDoubleStrike: 'Double strike: {0}%',
+  K.sheetLifesteal: 'Lifesteal: {0}%',
+  K.sheetOnHit: '{0} on hit: {1}% ({2} damage/turn, {3} turns)',
+  K.sheetCumulative: 'Combined ×{0}:',
+  K.dotBurn: 'burn',
 
   K.itemFound: 'Item found!',
   K.itemGiveTo: 'Give to a hero:',

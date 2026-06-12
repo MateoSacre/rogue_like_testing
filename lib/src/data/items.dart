@@ -1,0 +1,258 @@
+import '../models/enums.dart';
+import '../models/item.dart';
+
+/// Item catalog.
+///
+/// Standard pool: 5 items (3 armor pieces, 1 weapon, 1 relic) per rarity tier.
+/// Boss items: one stackable relic per mob category, themed on that boss,
+/// dropped only when its boss dies.
+final List<ItemDef> itemCatalog = [
+  // ── Common (white) ────────────────────────────────────────────────────────
+  const ItemDef(
+    id: 'chest_common',
+    slot: ItemSlot.chest,
+    rarity: ItemRarity.common,
+    name: LocalizedText('Plastron usé', 'Worn Breastplate'),
+    description: LocalizedText('+6 PV max', '+6 max HP'),
+    hpBonus: 6,
+  ),
+  const ItemDef(
+    id: 'gloves_common',
+    slot: ItemSlot.gloves,
+    rarity: ItemRarity.common,
+    name: LocalizedText('Gants de cuir', 'Leather Gloves'),
+    description: LocalizedText('+2 ATK', '+2 ATK'),
+    atkBonus: 2,
+  ),
+  const ItemDef(
+    id: 'helmet_common',
+    slot: ItemSlot.helmet,
+    rarity: ItemRarity.common,
+    name: LocalizedText('Casque rouillé', 'Rusty Helm'),
+    description: LocalizedText('+2 DEF', '+2 DEF'),
+    defBonus: 2,
+  ),
+  const ItemDef(
+    id: 'weapon_common',
+    slot: ItemSlot.weapon,
+    rarity: ItemRarity.common,
+    name: LocalizedText('Dague rapide', 'Swift Dagger'),
+    description: LocalizedText(
+      '+1 ATK, 10% de double frappe',
+      '+1 ATK, 10% double strike',
+    ),
+    atkBonus: 1,
+    extraAttackChance: .10,
+  ),
+  const ItemDef(
+    id: 'relic_fang',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.common,
+    name: LocalizedText('Croc de loup', 'Wolf Fang'),
+    description: LocalizedText(
+      '25% de saignement à l\'attaque (2 dégâts/tour, 3 tours)',
+      '25% bleed on hit (2 damage/turn, 3 turns)',
+    ),
+    onHit: ItemOnHit(name: 'Bleed', chance: .25, damage: 2, duration: 3),
+  ),
+
+  // ── Uncommon (green) ──────────────────────────────────────────────────────
+  const ItemDef(
+    id: 'chest_uncommon',
+    slot: ItemSlot.chest,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Cuirasse renforcée', 'Reinforced Cuirass'),
+    description: LocalizedText('+15 PV max', '+15 max HP'),
+    hpBonus: 15,
+  ),
+  const ItemDef(
+    id: 'gloves_uncommon',
+    slot: ItemSlot.gloves,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Poings cloutés', 'Studded Fists'),
+    description: LocalizedText('+5 ATK', '+5 ATK'),
+    atkBonus: 5,
+  ),
+  const ItemDef(
+    id: 'helmet_uncommon',
+    slot: ItemSlot.helmet,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Heaume d\'acier', 'Steel Helm'),
+    description: LocalizedText('+5 DEF', '+5 DEF'),
+    defBonus: 5,
+  ),
+  const ItemDef(
+    id: 'weapon_uncommon',
+    slot: ItemSlot.weapon,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Lames jumelles', 'Twin Blades'),
+    description: LocalizedText(
+      '+3 ATK, 20% de double frappe',
+      '+3 ATK, 20% double strike',
+    ),
+    atkBonus: 3,
+    extraAttackChance: .20,
+  ),
+  const ItemDef(
+    id: 'relic_venom',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Fiole de venin', 'Venom Vial'),
+    description: LocalizedText(
+      '30% de poison à l\'attaque (3 dégâts/tour, 4 tours)',
+      '30% poison on hit (3 damage/turn, 4 turns)',
+    ),
+    onHit: ItemOnHit(name: 'Poison', chance: .30, damage: 3, duration: 4),
+  ),
+
+  // ── Legendary (red) ───────────────────────────────────────────────────────
+  const ItemDef(
+    id: 'chest_legendary',
+    slot: ItemSlot.chest,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Armure du colosse', 'Colossus Plate'),
+    description: LocalizedText('+35 PV max', '+35 max HP'),
+    hpBonus: 35,
+  ),
+  const ItemDef(
+    id: 'gloves_legendary',
+    slot: ItemSlot.gloves,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Poigne du berserker', 'Berserker Grip'),
+    description: LocalizedText('+11 ATK', '+11 ATK'),
+    atkBonus: 11,
+  ),
+  const ItemDef(
+    id: 'helmet_legendary',
+    slot: ItemSlot.helmet,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Couronne de garde', 'Warden Crown'),
+    description: LocalizedText('+11 DEF', '+11 DEF'),
+    defBonus: 11,
+  ),
+  const ItemDef(
+    id: 'weapon_legendary',
+    slot: ItemSlot.weapon,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Fauchard du chaos', 'Chaos Glaive'),
+    description: LocalizedText(
+      '+6 ATK, 40% de double frappe',
+      '+6 ATK, 40% double strike',
+    ),
+    atkBonus: 6,
+    extraAttackChance: .40,
+  ),
+  const ItemDef(
+    id: 'relic_vampire',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Cœur vampirique', 'Vampiric Heart'),
+    description: LocalizedText(
+      'Soigne 20% des dégâts infligés',
+      'Heals for 20% of damage dealt',
+    ),
+    lifesteal: .20,
+  ),
+
+  // ── Boss items (yellow) — one per category, themed on its boss ────────────
+  const ItemDef(
+    id: 'boss_monsters',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.boss,
+    name: LocalizedText('Croc du Fossoyeur de mondes', 'World Ender\'s Fang'),
+    description: LocalizedText(
+      '+6 ATK, 35% de poison à l\'attaque (4 dégâts/tour, 4 tours)',
+      '+6 ATK, 35% poison on hit (4 damage/turn, 4 turns)',
+    ),
+    atkBonus: 6,
+    onHit: ItemOnHit(name: 'Poison', chance: .35, damage: 4, duration: 4),
+  ),
+  const ItemDef(
+    id: 'boss_bandits',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.boss,
+    name: LocalizedText('Lame du Tyran', 'Tyrant\'s Blade'),
+    description: LocalizedText(
+      '+20% de double frappe, 25% de saignement (3 dégâts/tour, 3 tours)',
+      '+20% double strike, 25% bleed (3 damage/turn, 3 turns)',
+    ),
+    extraAttackChance: .20,
+    onHit: ItemOnHit(name: 'Bleed', chance: .25, damage: 3, duration: 3),
+  ),
+  const ItemDef(
+    id: 'boss_cultists',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.boss,
+    name: LocalizedText('Hymne virulent', 'Virulent Hymn'),
+    description: LocalizedText(
+      '50% de poison à l\'attaque (4 dégâts/tour, 5 tours)',
+      '50% poison on hit (4 damage/turn, 5 turns)',
+    ),
+    onHit: ItemOnHit(name: 'Poison', chance: .50, damage: 4, duration: 5),
+  ),
+  const ItemDef(
+    id: 'boss_mages',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.boss,
+    name: LocalizedText('Cendres du Cataclysme', 'Cataclysm Ash'),
+    description: LocalizedText(
+      '35% de brûlure à l\'attaque (5 dégâts/tour, 3 tours)',
+      '35% burn on hit (5 damage/turn, 3 turns)',
+    ),
+    onHit: ItemOnHit(name: 'Burn', chance: .35, damage: 5, duration: 3),
+  ),
+  const ItemDef(
+    id: 'boss_empire',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.boss,
+    name: LocalizedText('Égide impériale', 'Imperial Aegis'),
+    description: LocalizedText('+8 DEF, +15 PV max', '+8 DEF, +15 max HP'),
+    defBonus: 8,
+    hpBonus: 15,
+  ),
+  const ItemDef(
+    id: 'boss_ghosts',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.boss,
+    name: LocalizedText('Couronne du Roi-liche', 'Lich King\'s Crown'),
+    description: LocalizedText(
+      'Soigne 30% des dégâts infligés',
+      'Heals for 30% of damage dealt',
+    ),
+    lifesteal: .30,
+  ),
+  const ItemDef(
+    id: 'boss_giants',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.boss,
+    name: LocalizedText('Cœur de titan', 'Titan Heart'),
+    description: LocalizedText('+30 PV max, +6 DEF', '+30 max HP, +6 DEF'),
+    hpBonus: 30,
+    defBonus: 6,
+  ),
+];
+
+final Map<String, ItemDef> _itemsById = {
+  for (final item in itemCatalog) item.id: item,
+};
+
+ItemDef? itemById(String id) => _itemsById[id];
+
+/// Standard drop pool for a rarity (boss items excluded).
+List<ItemDef> itemsOfRarity(ItemRarity rarity) {
+  return itemCatalog
+      .where((item) => item.rarity == rarity && rarity != ItemRarity.boss)
+      .toList();
+}
+
+/// The unique boss item for a mob category.
+ItemDef? bossItemFor(MobCategory category) => itemById('boss_${category.name}');
+
+int itemSellValue(ItemRarity rarity) {
+  return switch (rarity) {
+    ItemRarity.common => 25,
+    ItemRarity.uncommon => 60,
+    ItemRarity.legendary => 150,
+    ItemRarity.boss => 250,
+  };
+}

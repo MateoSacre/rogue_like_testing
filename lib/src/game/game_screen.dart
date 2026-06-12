@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -25,6 +26,7 @@ import 'game_balance.dart';
 part 'battle_controls.dart';
 part 'battle_summary.dart';
 part 'boss_warning.dart';
+part 'character_sheet_dialog.dart';
 part 'dev_tools_panel.dart';
 part 'inventory_widgets.dart';
 part 'item_drop_dialog.dart';
@@ -718,6 +720,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return showDialog<void>(
       context: context,
       builder: (_) => _InventoryDialog(state: this),
+    );
+  }
+
+  Future<void> _openCharacterSheet(Fighter fighter) {
+    return showDialog<void>(
+      context: context,
+      builder: (_) => _CharacterSheetDialog(fighter: fighter),
     );
   }
 

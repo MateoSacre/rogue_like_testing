@@ -99,6 +99,11 @@ class _TeamPanel extends StatelessWidget {
           battle.activeMobTarget == fighter ||
           battle.selectedTarget == fighter;
       final canToggleTarget = !isHeroes && battle.canToggleEnemyTarget(fighter);
+      final canSelect =
+          canPickHero && !battle.isAnimating && !battle.autoAttackEnabled;
+      // Tap priority: select / toggle target when available; tapping the
+      // already-selected hero (or a card with no gameplay action — see the
+      // onTap fallback in FighterCard) opens the character sheet instead.
       return FighterCard(
         fighter: fighter,
         selected: selected,
@@ -106,11 +111,12 @@ class _TeamPanel extends StatelessWidget {
         acted: hasActed,
         compact: compact,
         showDevInfo: state.settings.devMode && !isHeroes,
-        onTap: canPickHero && !battle.isAnimating && !battle.autoAttackEnabled
+        onTap: canSelect && battle.selectedHero != fighter
             ? () => state.update(() => battle.selectHero(fighter))
             : canToggleTarget
             ? () => state.update(() => battle.toggleEnemyTarget(fighter))
             : null,
+        onInfo: () => state._openCharacterSheet(fighter),
       );
     }).toList();
   }

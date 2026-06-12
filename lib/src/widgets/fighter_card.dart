@@ -29,6 +29,7 @@ class FighterCard extends StatelessWidget {
     this.compact = false,
     this.showDevInfo = false,
     this.onTap,
+    this.onInfo,
     super.key,
   });
 
@@ -40,6 +41,10 @@ class FighterCard extends StatelessWidget {
   final bool showDevInfo;
   final VoidCallback? onTap;
 
+  /// Opens the character sheet. Wired to long-press; also used as the tap
+  /// action when the card has no gameplay action available.
+  final VoidCallback? onInfo;
+
   @override
   Widget build(BuildContext context) {
     final hpRatio = fighter.maxHp == 0 ? 0.0 : fighter.hp / fighter.maxHp;
@@ -49,7 +54,8 @@ class FighterCard extends StatelessWidget {
         margin: EdgeInsets.zero,
         color: _backgroundColor(context),
         child: InkWell(
-          onTap: onTap,
+          onTap: onTap ?? onInfo,
+          onLongPress: onInfo,
           borderRadius: BorderRadius.circular(AppLayout.borderRadius),
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -170,7 +176,8 @@ class FighterCard extends StatelessWidget {
     return Card(
       color: _backgroundColor(context),
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap ?? onInfo,
+        onLongPress: onInfo,
         borderRadius: BorderRadius.circular(AppLayout.borderRadius),
         // The card lives in a fixed-height grid cell, so scale the content
         // down if it would otherwise overflow (extra dev "AI" line, large

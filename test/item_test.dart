@@ -213,6 +213,15 @@ void main() {
     });
   });
 
+  group('Combined proc chance', () {
+    test('matches 1 - product of miss chances', () {
+      expect(combinedProcChance([.25, .25]), closeTo(.4375, 1e-9));
+      expect(combinedProcChance([.5]), closeTo(.5, 1e-9));
+      expect(combinedProcChance([]), 0);
+      expect(combinedProcChance([1.0, .3]), closeTo(1.0, 1e-9));
+    });
+  });
+
   group('Serialization', () {
     test('equipment and relics survive a JSON round trip', () {
       final original = hero('A');

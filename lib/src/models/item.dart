@@ -80,3 +80,14 @@ class PendingItemDrop {
 
   final ItemDef def;
 }
+
+/// Chance that at least one of several independent procs triggers
+/// (1 − Π(1 − cᵢ)). Used to display the effective on-hit chance when a hero
+/// holds several copies of the same relic.
+double combinedProcChance(Iterable<double> chances) {
+  var missAll = 1.0;
+  for (final chance in chances) {
+    missAll *= (1 - chance).clamp(0.0, 1.0);
+  }
+  return 1 - missAll;
+}
