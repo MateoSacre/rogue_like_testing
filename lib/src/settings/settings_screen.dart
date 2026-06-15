@@ -160,26 +160,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           ],
-          const SizedBox(height: AppLayout.sectionGap),
-          Text(
-            context.tr(K.levelUpTitle),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppLayout.controlGap),
-          SegmentedButton<LevelUpMode>(
-            segments: LevelUpMode.values
-                .map(
-                  (mode) => ButtonSegment(
-                    value: mode,
-                    label: Text(context.l10n.levelUpMode(mode)),
-                  ),
-                )
-                .toList(),
-            selected: {settings.levelUpMode},
-            onSelectionChanged: (selection) {
-              update(settings.copyWith(levelUpMode: selection.first));
-            },
-          ),
           if (widget.onResetProgress != null) ...[
             const SizedBox(height: AppLayout.panelGap),
             const Divider(),

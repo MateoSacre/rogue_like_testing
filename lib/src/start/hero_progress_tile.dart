@@ -36,13 +36,12 @@ class _HeroProgressTile extends StatelessWidget {
                       fmt(hero.baseDefence),
                     ]),
                   ),
-                  if (progress.isUnlocked(hero.name))
+                  if (progress.isUnlocked(hero.name) &&
+                      level < PlayerProgress.maxLevel)
                     Text(
-                      context.tr(K.tilePermanentPoints, [
-                        progress.statPointsFor(hero.name).maxHp,
-                        progress.statPointsFor(hero.name).attack,
-                        progress.statPointsFor(hero.name).defence,
-                        progress.statPointsFor(hero.name).unassigned,
+                      context.tr(K.xpValue, [
+                        progress.xpFor(hero.name),
+                        GameBalance.xpForLevel(level),
                       ]),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),

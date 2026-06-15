@@ -1,85 +1,34 @@
-import 'dart:math';
-
 import '../../models/fighter.dart';
-import '../../models/level_up_stat.dart';
-import '../../settings/game_settings.dart';
-import '../../utils/format.dart';
-import '../../data/skills.dart';
 import '../game_balance.dart';
 import 'battle_state.dart';
 
-/// Manages XP gain, level-up stat choices, and applying level bonuses.
+/// XP gain and the single persistent level. There is no stat-allocation
+/// choice anymore: every level multiplies all base stats by a degressive
+/// bonus. The level carries across runs (synced into PlayerProgress by the UI).
 mixin LevelingMixin on BattleControllerBase {
-  // ── XP ────────────────────────────────────────────────────────────────────
-
   @override
-  void gainXp(Fighter hero, int xp, LevelUpMode levelUpMode) {
+  void gainXp(Fighter hero, int xp) {
+    if (xp <= 0 || hero.level >= GameBalance.maxHeroLevel) return;
     hero.xp += xp;
     addLog('${hero.name} gains $xp xp');
-    while (hero.xp >= xpCap(hero.level)) {
-      hero.xp -= xpCap(hero.level);
+    while (hero.level < GameBalance.maxHeroLevel && hero.xp >= hero.xpCap) {
+      hero.xp -= hero.xpCap;
       hero.level++;
+      _applyLevelGrowth(hero);
       addLog('${hero.name} reaches level ${hero.level}');
-      if (levelUpMode == LevelUpMode.manual) {
-        pendingLevelUps.add(PendingLevelUp(hero));
-        autoAttackEnabled = false;
-      } else {
-        applyLevelUpBonus(hero, chooseLevelUpStat(hero, levelUpMode));
-      }
     }
+    if (hero.level >= GameBalance.maxHeroLevel) hero.xp = 0;
   }
 
-  int xpCap(int level) {
-    var cap = GameBalance.baseXpCap;
-    for (var i = 1; i < level; i++) {
-      cap *=
-          GameBalance.xpCapBaseMultiplier +
-          GameBalance.xpCapCurveMultiplier *
-              exp(-GameBalance.xpCapSlopeModifier * i);
-    }
-    return cap.round();
-  }
-
-  // ── Level-up stat selection ───────────────────────────────────────────────
-
-  LevelUpStat chooseLevelUpStat(Fighter hero, LevelUpMode mode) {
-    return switch (mode) {
-      LevelUpMode.manual => LevelUpStat.maxHp,
-      LevelUpMode.random =>
-        LevelUpStat.values[random.nextInt(LevelUpStat.values.length)],
-      LevelUpMode.strongest => LevelUpStat.values.reduce(
-        (best, stat) =>
-            stat.currentValue(hero) > best.currentValue(hero) ? stat : best,
-      ),
-      LevelUpMode.balanced => LevelUpStat.values.reduce((best, stat) {
-        final bestRatio = best.currentValue(hero) / best.baseValue(hero);
-        final statRatio = stat.currentValue(hero) / stat.baseValue(hero);
-        return statRatio < bestRatio ? stat : best;
-      }),
-    };
-  }
-
-  // ── Level-up application ──────────────────────────────────────────────────
-
-  double levelUpIncreaseFor(Fighter hero, LevelUpStat stat) =>
-      levelIncrease(stat.currentValue(hero));
-
-  void applyLevelUpBonus(Fighter hero, LevelUpStat stat) {
-    final increase = levelUpIncreaseFor(hero, stat);
-    switch (stat) {
-      case LevelUpStat.maxHp:
-        hero.maxHp += increase;
-      case LevelUpStat.attack:
-        hero.attackPower += increase;
-      case LevelUpStat.defence:
-        hero.baseDefence += increase;
-    }
+  /// Adds the level's degressive stat increment on top of current stats,
+  /// so item bonuses already baked in are preserved.
+  void _applyLevelGrowth(Fighter hero) {
+    final delta =
+        GameBalance.statBonusForLevel(hero.level) -
+        GameBalance.statBonusForLevel(hero.level - 1);
+    hero.maxHp += hero.initialMaxHp * delta;
+    hero.attackPower += hero.initialAttackPower * delta;
+    hero.baseDefence += hero.initialBaseDefence * delta;
     hero.hp = hero.maxHp;
-    addLog('${hero.name} gains +${fmt(increase)} ${stat.label}');
-  }
-
-  void resolvePendingLevelUp(PendingLevelUp pending, LevelUpStat stat) {
-    pendingLevelUps.remove(pending);
-    applyLevelUpBonus(pending.hero, stat);
   }
 }

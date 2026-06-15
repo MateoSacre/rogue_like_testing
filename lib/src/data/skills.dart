@@ -7,7 +7,6 @@ import '../models/skill.dart';
 import '../models/skill_preview.dart';
 import '../models/status_effect.dart';
 import '../utils/format.dart';
-import '../game/game_balance.dart';
 
 Skill skillFactoryFrom(Skill skill) {
   final result = skillFactoryFromName(skill.name);
@@ -269,11 +268,4 @@ void _applyProtection(
       battle.addLog('${caster.name} protects ${target.name}');
     }
   }
-}
-
-double levelIncrease(double currentValue) {
-  return max(
-    GameBalance.minimumLevelIncrease,
-    (currentValue * GameBalance.levelUpStatRatio).ceilToDouble(),
-  );
 }

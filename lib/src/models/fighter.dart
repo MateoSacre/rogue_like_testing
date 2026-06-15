@@ -96,41 +96,8 @@ class Fighter {
         .join(' | ');
   }
 
-  int get xpCap {
-    var cap = GameBalance.baseXpCap;
-    for (var i = 1; i < level; i++) {
-      cap *=
-          GameBalance.xpCapBaseMultiplier +
-          GameBalance.xpCapCurveMultiplier *
-              exp(-GameBalance.xpCapSlopeModifier * i);
-    }
-    return cap.round();
-  }
-
-  int getXpForLevel(int level) {
-    var cap = GameBalance.baseXpCap;
-
-    for (var i = 1; i < level; i++) {
-      cap *=
-          GameBalance.xpCapBaseMultiplier +
-          GameBalance.xpCapCurveMultiplier *
-              exp(-GameBalance.xpCapSlopeModifier * i);
-    }
-
-    return cap.round();
-  }
-
-  int getXpForCurrentLevel() {
-    var cap = GameBalance.baseXpCap;
-
-    for (var i = 1; i < level; i++) {
-      cap *=
-          GameBalance.xpCapBaseMultiplier +
-          GameBalance.xpCapCurveMultiplier *
-              exp(-GameBalance.xpCapSlopeModifier * i);
-    }
-    return cap.round();
-  }
+  /// XP required to advance from the current level to the next.
+  int get xpCap => GameBalance.xpForLevel(level);
 
   Fighter copy({String? renamed}) {
     Fighter newFighter = Fighter(

@@ -3,7 +3,6 @@ import 'package:flutter_testing_shit/src/game/battle_controller.dart';
 import 'package:flutter_testing_shit/src/game/game_balance.dart';
 import 'package:flutter_testing_shit/src/models/enums.dart';
 import 'package:flutter_testing_shit/src/models/fighter.dart';
-import 'package:flutter_testing_shit/src/models/level_up_stat.dart';
 import 'package:flutter_testing_shit/src/models/status_effect.dart';
 import 'package:flutter_testing_shit/src/models/team.dart';
 import 'package:flutter_testing_shit/src/models/wave_info.dart';
@@ -77,36 +76,40 @@ void main() {
       expect(protected.defence, 1);
     });
 
-    test('manual level up queues pending choices and auto mode applies a stat', () {
+    test('gaining XP levels up and scales every stat degressively', () {
       final battle = BattleController();
-      final manualHero = Fighter(
-        name: 'Manual',
-        maxHp: 20,
-        attackPower: 5,
-        baseDefence: 5,
-        isHero: true,
-      );
-      final autoHero = Fighter(
-        name: 'Auto',
-        maxHp: 20,
-        attackPower: 5,
-        baseDefence: 5,
+      final hero = Fighter(
+        name: 'Hero',
+        maxHp: 100,
+        attackPower: 10,
+        baseDefence: 10,
         isHero: true,
       );
 
-      battle.gainXp(manualHero, battle.xpCap(1), LevelUpMode.manual);
-      expect(manualHero.level, 2);
-      expect(battle.pendingLevelUps.single.hero, manualHero);
+      battle.gainXp(hero, GameBalance.xpForLevel(1));
 
-      battle.resolvePendingLevelUp(battle.pendingLevelUps.single, LevelUpStat.attack);
-      expect(battle.pendingLevelUps, isEmpty);
-      expect(manualHero.attackPower, 6);
-      expect(manualHero.hp, manualHero.maxHp);
+      expect(hero.level, 2);
+      final multiplier = 1 + GameBalance.statBonusForLevel(2);
+      expect(hero.maxHp, closeTo(100 * multiplier, 1e-6));
+      expect(hero.attackPower, closeTo(10 * multiplier, 1e-6));
+      expect(hero.baseDefence, closeTo(10 * multiplier, 1e-6));
+      expect(hero.hp, hero.maxHp); // full heal on level up
+    });
 
-      battle.gainXp(autoHero, battle.xpCap(1), LevelUpMode.strongest);
-      expect(autoHero.level, 2);
-      expect(autoHero.maxHp, 21);
-      expect(battle.pendingLevelUps, isEmpty);
+    test('level is capped at the maximum', () {
+      final battle = BattleController();
+      final hero = Fighter(
+        name: 'Hero',
+        maxHp: 100,
+        attackPower: 10,
+        baseDefence: 10,
+        isHero: true,
+      );
+
+      battle.gainXp(hero, 100000000);
+
+      expect(hero.level, GameBalance.maxHeroLevel);
+      expect(hero.xp, 0);
     });
 
     test('potions validate merchant, stock, gold and injury constraints', () {
@@ -241,11 +244,7 @@ void main() {
 
       expect(battle.canAct, isTrue);
 
-      await battle.performSelectedAction(
-        pause: () async {},
-        notify: () {},
-        levelUpMode: LevelUpMode.balanced,
-      );
+      await battle.performSelectedAction(pause: () async {}, notify: () {});
 
       expect(highHpMob.hp, lessThan(highHpMob.maxHp));
       expect(lowHpMob.hp, lowHpMob.maxHp);

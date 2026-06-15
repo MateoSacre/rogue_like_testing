@@ -111,7 +111,7 @@ mixin InventoryMixin on BattleControllerBase {
   }) {
     if (!merchantAvailable || !hero.isAlive || gold < cost) return false;
     gold -= cost;
-    gainXp(hero, xp, currentLevelUpMode);
+    gainXp(hero, xp);
     addLog('$label used on ${hero.name}');
     return true;
   }

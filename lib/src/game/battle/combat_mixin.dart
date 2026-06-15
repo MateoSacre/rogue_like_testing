@@ -137,7 +137,7 @@ mixin CombatMixin on BattleControllerBase {
     final droppedGold = mob.value * GameBalance.goldPerMobValue;
     gold += droppedGold;
     addLog('${mob.name} drops $droppedGold gold');
-    gainXp(attacker, (mob.value / GameBalance.killXpDivisor).ceil(), currentLevelUpMode);
+    gainXp(attacker, (mob.value / GameBalance.killXpDivisor).ceil());
     rollItemDrop(mob);
   }
 

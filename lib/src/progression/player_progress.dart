@@ -1,65 +1,114 @@
 import '../data/heroes.dart';
-import 'hero_stat_points.dart';
-import '../models/level_up_stat.dart';
+import '../game/game_balance.dart';
+
+/// Persistent level + XP for one hero. The level is unified: in-run XP and
+/// (later) duplicate XP both feed this single bar, and it carries across runs.
+class HeroProgress {
+  HeroProgress({this.level = 1, this.xp = 0});
+
+  factory HeroProgress.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return HeroProgress();
+    return HeroProgress(
+      level: ((json['level'] as num?)?.toInt() ?? 1).clamp(
+        1,
+        GameBalance.maxHeroLevel,
+      ),
+      xp: (json['xp'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  int level;
+  int xp;
+
+  Map<String, dynamic> toJson() => {'level': level, 'xp': xp};
+}
 
 class PlayerProgress {
   PlayerProgress({
     required this.gems,
     required Set<String> unlockedHeroes,
-    required Map<String, HeroStatPoints> heroStats,
+    required Map<String, HeroProgress> heroProgress,
   }) : unlockedHeroes = {...unlockedHeroes},
-       heroStats = {...heroStats};
+       heroProgress = {...heroProgress};
 
   factory PlayerProgress.initial() {
-    return PlayerProgress(gems: 0, unlockedHeroes: {}, heroStats: {});
+    return PlayerProgress(gems: 0, unlockedHeroes: {}, heroProgress: {});
   }
 
   factory PlayerProgress.fromJson(Map<String, dynamic>? json) {
     if (json == null) return PlayerProgress.initial();
-    final heroStats = <String, HeroStatPoints>{};
-    final rawStats = json['heroStats'] as Map<String, dynamic>? ?? const {};
-    for (final entry in rawStats.entries) {
-      heroStats[entry.key] = HeroStatPoints.fromJson(
+    final heroProgress = <String, HeroProgress>{};
+    final raw = json['heroProgress'] as Map<String, dynamic>? ?? const {};
+    for (final entry in raw.entries) {
+      heroProgress[entry.key] = HeroProgress.fromJson(
         entry.value as Map<String, dynamic>?,
       );
     }
-    final legacyLevels =
-        json['heroLevels'] as Map<String, dynamic>? ?? const {};
-    for (final entry in legacyLevels.entries) {
-      heroStats.putIfAbsent(
+    final unlocked =
+        (json['unlockedHeroes'] as List<dynamic>? ?? const [])
+            .whereType<String>()
+            .toSet();
+
+    // ── Legacy migration ──────────────────────────────────────────────────
+    // Old saves stored allocated stat points (heroStats) or raw heroLevels.
+    // Convert them to a starting level (total points + 1).
+    final legacyStats = json['heroStats'] as Map<String, dynamic>? ?? const {};
+    for (final entry in legacyStats.entries) {
+      final pts = entry.value as Map<String, dynamic>?;
+      final total = pts == null
+          ? 0
+          : ((pts['maxHp'] as num?)?.toInt() ?? 0) +
+                ((pts['attack'] as num?)?.toInt() ?? 0) +
+                ((pts['defence'] as num?)?.toInt() ?? 0) +
+                ((pts['unassigned'] as num?)?.toInt() ?? 0);
+      unlocked.add(entry.key);
+      heroProgress.putIfAbsent(
         entry.key,
-        () => balancedPointsForLevel((entry.value as num?)?.toInt() ?? 1),
+        () => HeroProgress(level: (1 + total).clamp(1, GameBalance.maxHeroLevel)),
       );
     }
+    final legacyLevels = json['heroLevels'] as Map<String, dynamic>? ?? const {};
+    for (final entry in legacyLevels.entries) {
+      unlocked.add(entry.key);
+      heroProgress.putIfAbsent(
+        entry.key,
+        () => HeroProgress(
+          level: ((entry.value as num?)?.toInt() ?? 1).clamp(
+            1,
+            GameBalance.maxHeroLevel,
+          ),
+        ),
+      );
+    }
+    // Every unlocked hero must have a progress entry.
+    for (final name in unlocked) {
+      heroProgress.putIfAbsent(name, HeroProgress.new);
+    }
+
     return PlayerProgress(
       gems: json['gems'] as int? ?? 0,
-      unlockedHeroes: (json['unlockedHeroes'] as List<dynamic>? ?? const [])
-          .whereType<String>()
-          .toSet(),
-      heroStats: heroStats,
+      unlockedHeroes: unlocked,
+      heroProgress: heroProgress,
     );
   }
 
   static const heroCost = 50;
-  static const heroLevelCostStep = 5;
-  static const maxPermanentHeroLevel = 50;
+  static int get maxLevel => GameBalance.maxHeroLevel;
 
   int gems;
   final Set<String> unlockedHeroes;
-  final Map<String, HeroStatPoints> heroStats;
+  final Map<String, HeroProgress> heroProgress;
 
   bool get hasUnlockedHero => unlockedHeroes.isNotEmpty;
 
-  int levelFor(String heroName) {
-    return (1 + statPointsFor(heroName).total).clamp(1, maxPermanentHeroLevel);
-  }
+  bool isUnlocked(String heroName) => unlockedHeroes.contains(heroName);
 
-  HeroStatPoints statPointsFor(String heroName) {
-    return heroStats[heroName] ?? const HeroStatPoints();
-  }
+  int levelFor(String heroName) => heroProgress[heroName]?.level ?? 1;
 
-  bool isUnlocked(String heroName) {
-    return unlockedHeroes.contains(heroName);
+  int xpFor(String heroName) => heroProgress[heroName]?.xp ?? 0;
+
+  void _ensureEntry(String heroName) {
+    heroProgress.putIfAbsent(heroName, HeroProgress.new);
   }
 
   bool canClaimStarterHero(String heroName) {
@@ -69,7 +118,7 @@ class PlayerProgress {
   bool claimStarterHero(String heroName) {
     if (!canClaimStarterHero(heroName)) return false;
     unlockedHeroes.add(heroName);
-    heroStats[heroName] = const HeroStatPoints();
+    _ensureEntry(heroName);
     return true;
   }
 
@@ -83,63 +132,25 @@ class PlayerProgress {
     if (!canBuyHero(heroName)) return false;
     gems -= heroCost;
     unlockedHeroes.add(heroName);
-    heroStats[heroName] = const HeroStatPoints();
+    _ensureEntry(heroName);
     return true;
   }
 
-  int upgradeCostFor(String heroName) {
-    return levelFor(heroName) * heroLevelCostStep;
-  }
-
-  bool canUpgradeHero(String heroName) {
-    return isUnlocked(heroName) &&
-        levelFor(heroName) < maxPermanentHeroLevel &&
-        gems >= upgradeCostFor(heroName);
-  }
-
-  bool upgradeHero(String heroName) {
-    if (!canUpgradeHero(heroName)) return false;
-    gems -= upgradeCostFor(heroName);
-    heroStats[heroName] = statPointsFor(heroName).addUnassigned();
-    return true;
-  }
-
-  bool canReallocateHeroStats(String heroName, HeroStatPoints stats) {
-    if (!isUnlocked(heroName)) return false;
-    if (stats.maxHp < 0 ||
-        stats.attack < 0 ||
-        stats.defence < 0 ||
-        stats.unassigned < 0) {
-      return false;
-    }
-    return stats.total == statPointsFor(heroName).total &&
-        stats.total <= maxPermanentHeroLevel - 1;
-  }
-
-  bool reallocateHeroStats(String heroName, HeroStatPoints stats) {
-    if (!canReallocateHeroStats(heroName, stats)) return false;
-    heroStats[heroName] = stats;
-    return true;
+  /// Writes a hero's level/XP back after a run (only for unlocked heroes).
+  void recordHeroProgress(String heroName, int level, int xp) {
+    final entry = heroProgress[heroName];
+    if (entry == null) return;
+    entry.level = level.clamp(1, GameBalance.maxHeroLevel);
+    entry.xp = xp;
   }
 
   Map<String, dynamic> toJson() {
     return {
       'gems': gems,
       'unlockedHeroes': unlockedHeroes.toList()..sort(),
-      'heroStats': heroStats.map(
-        (name, stats) => MapEntry(name, stats.toJson()),
+      'heroProgress': heroProgress.map(
+        (name, entry) => MapEntry(name, entry.toJson()),
       ),
     };
-  }
-
-  static HeroStatPoints balancedPointsForLevel(int level) {
-    var stats = const HeroStatPoints();
-    final points = (level - 1).clamp(0, maxPermanentHeroLevel - 1);
-    for (var i = 0; i < points; i++) {
-      stats = stats.addUnassigned().assign(
-        LevelUpStat.values[i % LevelUpStat.values.length],
-      );
-    }
-    return stats;
   }
 }

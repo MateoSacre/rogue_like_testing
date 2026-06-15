@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 
 import '../models/enums.dart';
 import '../models/item.dart';
-import '../models/level_up_stat.dart';
 import '../settings/game_settings.dart';
 import 'app_language.dart';
 
@@ -699,34 +698,6 @@ class AppLocalizations extends InheritedWidget {
       };
     }
     return speed.label;
-  }
-
-  String levelUpMode(LevelUpMode mode) {
-    if (language != AppLanguage.fr) {
-      return switch (mode) {
-        LevelUpMode.manual => 'Manual',
-        LevelUpMode.random => 'Random',
-        LevelUpMode.strongest => 'Strongest stat',
-        LevelUpMode.balanced => 'Balance profile',
-      };
-    }
-    return mode.label;
-  }
-
-  String levelUpStat(LevelUpStat stat) {
-    return switch (stat) {
-      LevelUpStat.maxHp => language == AppLanguage.fr ? 'PV max' : 'Max HP',
-      LevelUpStat.attack => language == AppLanguage.fr ? 'Attaque' : 'Attack',
-      LevelUpStat.defence => language == AppLanguage.fr ? 'Défense' : 'Defence',
-    };
-  }
-
-  String levelUpStatShort(LevelUpStat stat) {
-    return switch (stat) {
-      LevelUpStat.maxHp => t(K.statHp),
-      LevelUpStat.attack => t(K.statAtk),
-      LevelUpStat.defence => t(K.statDef),
-    };
   }
 
   /// Resolves an item's FR/EN text pair for the current language.

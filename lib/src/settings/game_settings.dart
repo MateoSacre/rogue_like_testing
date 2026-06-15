@@ -13,17 +13,6 @@ enum AutoAttackSpeed {
   final Duration duration;
 }
 
-enum LevelUpMode {
-  manual('Choix manuel'),
-  random('Aleatoire'),
-  strongest('Stat la plus forte'),
-  balanced('Equilibrer le profil');
-
-  const LevelUpMode(this.label);
-
-  final String label;
-}
-
 class GameSettings {
   const GameSettings({
     this.darkTheme = false,
@@ -35,7 +24,6 @@ class GameSettings {
     this.devMode = false,
     this.devAutoRestartOnDefeat = false,
     this.seedString = '',
-    this.levelUpMode = LevelUpMode.manual,
   });
 
   final bool darkTheme;
@@ -47,7 +35,6 @@ class GameSettings {
   final bool devMode;
   final bool devAutoRestartOnDefeat;
   final String seedString;
-  final LevelUpMode levelUpMode;
 
   GameSettings copyWith({
     bool? darkTheme,
@@ -59,7 +46,6 @@ class GameSettings {
     bool? devMode,
     bool? devAutoRestartOnDefeat,
     String? seedString,
-    LevelUpMode? levelUpMode,
   }) {
     return GameSettings(
       darkTheme: darkTheme ?? this.darkTheme,
@@ -72,7 +58,6 @@ class GameSettings {
       devAutoRestartOnDefeat:
           devAutoRestartOnDefeat ?? this.devAutoRestartOnDefeat,
       seedString: seedString ?? this.seedString,
-      levelUpMode: levelUpMode ?? this.levelUpMode,
     );
   }
 
@@ -87,7 +72,6 @@ class GameSettings {
       'devMode': devMode,
       'devAutoRestartOnDefeat': devAutoRestartOnDefeat,
       'seedString': seedString,
-      'levelUpMode': levelUpMode.name,
     };
   }
 
@@ -110,10 +94,6 @@ class GameSettings {
       devMode: devMode,
       devAutoRestartOnDefeat: json['devAutoRestartOnDefeat'] == true,
       seedString: json['seedString'] as String? ?? '',
-      levelUpMode: LevelUpMode.values.firstWhere(
-        (mode) => mode.name == json['levelUpMode'],
-        orElse: () => LevelUpMode.manual,
-      ),
     );
   }
 }

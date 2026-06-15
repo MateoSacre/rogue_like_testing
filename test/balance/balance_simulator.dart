@@ -11,9 +11,6 @@ library;
 import 'package:flutter_testing_shit/src/data/heroes.dart';
 import 'package:flutter_testing_shit/src/game/battle_controller.dart';
 import 'package:flutter_testing_shit/src/models/fighter.dart';
-import 'package:flutter_testing_shit/src/progression/hero_stat_points.dart';
-import 'package:flutter_testing_shit/src/progression/player_progress.dart';
-import 'package:flutter_testing_shit/src/settings/game_settings.dart';
 
 /// Starting level tiers each composition is tested at.
 const List<int> kLevelTiers = [1, 25, 50];
@@ -100,14 +97,13 @@ List<List<String>> allCompositions(List<String> names) {
   return result;
 }
 
-/// Builds a team of [names], each hero starting at [level] with the same
-/// balanced permanent-stat allocation the game would assign.
+/// Builds a team of [names], each hero starting at [level] (degressive
+/// stat scaling), with no carried XP.
 List<Fighter> buildTeamAtLevel(List<String> names, int level) {
-  final points = PlayerProgress.balancedPointsForLevel(level);
   return buildTeamFromProgress(
     selectedHeroNames: names,
     levelFor: (_) => level,
-    statPointsFor: (_, stat) => points.valueFor(stat),
+    xpFor: (_) => 0,
   );
 }
 
@@ -141,7 +137,6 @@ Future<RunOutcome> runOnce(
       useSkills: useSkills,
       autoBuyHealingItems: false,
       useHealingItems: false,
-      levelUpMode: LevelUpMode.balanced,
     );
 
     if (battle.gameOver) return RunOutcome(battle.waveCounter, false);
@@ -151,7 +146,7 @@ Future<RunOutcome> runOnce(
       battle.continueAfterMerchant();
       continue;
     }
-    // Any other stop is unexpected with balanced level-ups; bail safely.
+    // Any other stop is unexpected; bail safely.
     return RunOutcome(battle.waveCounter, false);
   }
 }
@@ -188,9 +183,7 @@ Future<LevelResult> simulateCell(
 }
 
 /// Called just before a (composition, level) cell starts.
-/// [points] is the balanced permanent-stat allocation applied at that level.
-typedef CellStartCallback =
-    void Function(CellContext ctx, HeroStatPoints points);
+typedef CellStartCallback = void Function(CellContext ctx);
 
 /// Called when a (composition, level) cell finishes, with its [elapsed] time.
 typedef CellDoneCallback =
@@ -241,7 +234,7 @@ Future<List<CompositionResult>> simulateAll({
         index: ++index,
         total: total,
       );
-      onCellStart?.call(ctx, PlayerProgress.balancedPointsForLevel(level));
+      onCellStart?.call(ctx);
       final sw = Stopwatch()..start();
       final result = await simulateCell(
         composition,

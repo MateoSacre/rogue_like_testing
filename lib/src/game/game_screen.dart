@@ -8,7 +8,6 @@ import '../l10n/app_localizations.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/item.dart';
-import '../models/level_up_stat.dart';
 import '../models/skill_preview.dart';
 import '../models/status_effect.dart';
 import '../models/team.dart';
@@ -30,7 +29,6 @@ part 'character_sheet_dialog.dart';
 part 'dev_tools_panel.dart';
 part 'inventory_widgets.dart';
 part 'item_drop_dialog.dart';
-part 'level_up_dialog.dart';
 part 'merchant_action.dart';
 part 'merchant_view.dart';
 part 'target_preview_label.dart';
@@ -95,7 +93,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             seedString: settings.seedString,
           );
     battle.devMode = settings.devMode;
-    _syncProgressGems();
+    _syncProgressFromBattle(notify: false);
   }
 
   @override
@@ -115,7 +113,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _saveToDiskOnly() {
     // Shared-reference mutation is safe; the parent is not notified here.
-    widget.progress.gems = battle.gems;
+    _syncProgressFromBattle(notify: false);
     SaveService.save(
       settings: settings,
       progress: widget.progress,
@@ -223,15 +221,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       useSkills: settings.autoUseSkills,
       autoBuyHealingItems: settings.autoBuyHealingItems,
       useHealingItems: settings.autoUseHealingItems,
-      levelUpMode: settings.levelUpMode,
     );
-    await _resolvePendingLevelUps();
     await _resolvePendingItemDrops();
     _refresh();
   }
 
   Future<void> saveGame() {
-    _syncProgressGems();
+    _syncProgressFromBattle(notify: true);
     final battleJson = battle.toJson();
     widget.onBattleSaved(battleJson);
     return SaveService.save(
@@ -241,10 +237,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _syncProgressGems() {
-    if (widget.progress.gems == battle.gems) return;
+  /// Pushes the run's mutable progression (gems, and each hero's persistent
+  /// level/XP) back into the shared PlayerProgress. [notify] tells the parent
+  /// to rebuild; it must be false while disposing (setState during unmount).
+  void _syncProgressFromBattle({required bool notify}) {
     widget.progress.gems = battle.gems;
-    widget.onProgressChanged(widget.progress);
+    for (final hero in battle.heroes.members) {
+      widget.progress.recordHeroProgress(hero.name, hero.level, hero.xp);
+    }
+    if (notify) widget.onProgressChanged(widget.progress);
   }
 
   @override
@@ -396,12 +397,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _actWithSelectedHero() async {
-    await battle.performSelectedAction(
-      pause: _mobAttackDelay,
-      notify: _refresh,
-      levelUpMode: settings.levelUpMode,
-    );
-    await _resolvePendingLevelUps();
+    await battle.performSelectedAction(pause: _mobAttackDelay, notify: _refresh);
     await _resolvePendingItemDrops();
     _refresh();
   }
@@ -505,21 +501,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     update(() => battle.devApplyEffect(selectedTarget, selectedEffect.build()));
   }
 
-  Future<void> _resolvePendingLevelUps() async {
-    while (mounted && battle.pendingLevelUps.isNotEmpty) {
-      final pending = battle.pendingLevelUps.first;
-      final stat = await showDialog<LevelUpStat>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) {
-          return _LevelUpDialog(pending: pending, battle: battle);
-        },
-      );
-      if (stat == null) return;
-      setState(() => battle.resolvePendingLevelUp(pending, stat));
-    }
-  }
-
   Future<void> _resolvePendingItemDrops() async {
     while (mounted && battle.pendingItemDrops.isNotEmpty) {
       final pending = battle.pendingItemDrops.first;
@@ -587,9 +568,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       useSkills: settings.autoUseSkills,
       autoBuyHealingItems: settings.autoBuyHealingItems,
       useHealingItems: settings.autoUseHealingItems,
-      levelUpMode: settings.levelUpMode,
     );
-    await _resolvePendingLevelUps();
     await _resolvePendingItemDrops();
     _refresh();
   }
@@ -607,7 +586,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
     if (hero == null) return;
     update(() => battle.buyXpPotion(hero, xp: xp, cost: cost, label: label));
-    await _resolvePendingLevelUps();
     _refresh();
     onChanged?.call();
   }

@@ -13,7 +13,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_testing_shit/src/data/heroes.dart';
 import 'package:flutter_testing_shit/src/game/game_balance.dart';
-import 'package:flutter_testing_shit/src/progression/hero_stat_points.dart';
 
 import 'balance/balance_simulator.dart';
 
@@ -26,11 +25,11 @@ void main() {
       var totalCellTime = Duration.zero;
 
       final results = await simulateAll(
-        onCellStart: (ctx, points) {
+        onCellStart: (ctx) {
           // ignore: avoid_print
           print(
             '${_progress(ctx)} ▶ ${_padLabel(ctx.label)} @ Lvl ${_padLevel(ctx.level)}  '
-            'pts ${_points(points)}  ($kTrialsPerCell runs)',
+            '($kTrialsPerCell runs)',
           );
         },
         onCellDone: (ctx, result, elapsed) {
@@ -102,9 +101,6 @@ String _progress(CellContext ctx) =>
 String _padLabel(String label) => label.padRight(46);
 
 String _padLevel(int level) => level.toString().padLeft(2);
-
-String _points(HeroStatPoints p) =>
-    'HP+${p.maxHp}/ATK+${p.attack}/DEF+${p.defence}';
 
 String _ms(Duration d) => '${d.inMilliseconds} ms';
 

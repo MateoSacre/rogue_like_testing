@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/heroes.dart';
+import '../game/game_balance.dart';
 import '../game/game_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../models/fighter.dart';
-import '../models/level_up_stat.dart';
 import '../persistence/save_service.dart';
-import '../progression/hero_stat_points.dart';
 import '../progression/player_progress.dart';
 import '../settings/game_settings.dart';
 import '../settings/settings_screen.dart';
@@ -15,7 +14,6 @@ import '../utils/format.dart';
 
 part 'hero_progress_tile.dart';
 part 'header_line.dart';
-part 'stat_allocation_dialog.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({
@@ -53,7 +51,7 @@ class _StartScreenState extends State<StartScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: Text(context.tr(K.appTitle)),
@@ -77,16 +75,10 @@ class _StartScreenState extends State<StartScreen> {
                 icon: const Icon(Icons.storefront),
                 text: context.tr(K.tabHeroes),
               ),
-              Tab(
-                icon: const Icon(Icons.upgrade),
-                text: context.tr(K.tabLevels),
-              ),
             ],
           ),
         ),
-        body: SafeArea(
-          child: TabBarView(children: [_runTab(), _shopTab(), _upgradeTab()]),
-        ),
+        body: SafeArea(child: TabBarView(children: [_runTab(), _shopTab()])),
       ),
     );
   }
@@ -152,81 +144,23 @@ class _StartScreenState extends State<StartScreen> {
           return _HeroProgressTile(
             hero: progressHero,
             progress: widget.progress,
-            trailing: Wrap(
-              spacing: AppLayout.tinyGap,
-              runSpacing: AppLayout.tinyGap,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: unlocked || !widget.progress.canBuyHero(hero.name)
-                      ? null
-                      : () => _mutateProgress(
-                          clearBattle: true,
-                          action: () {
-                            widget.progress.buyHero(hero.name);
-                            selectedHeroes.add(hero.name);
-                          },
-                        ),
-                  icon: Icon(unlocked ? Icons.check : Icons.shopping_bag),
-                  label: Text(
-                    unlocked
-                        ? context.tr(K.unlocked)
-                        : '${PlayerProgress.heroCost}',
-                  ),
-                ),
-                if (unlocked)
-                  OutlinedButton.icon(
-                    onPressed: () => _openStatAllocationDialog(hero),
-                    icon: const Icon(Icons.tune),
-                    label: Text(context.tr(K.statsButton)),
-                  ),
-              ],
+            trailing: FilledButton.tonalIcon(
+              onPressed: unlocked || !widget.progress.canBuyHero(hero.name)
+                  ? null
+                  : () => _mutateProgress(
+                      clearBattle: true,
+                      action: () {
+                        widget.progress.buyHero(hero.name);
+                        selectedHeroes.add(hero.name);
+                      },
+                    ),
+              icon: Icon(unlocked ? Icons.check : Icons.shopping_bag),
+              label: Text(
+                unlocked ? context.tr(K.unlocked) : '${PlayerProgress.heroCost}',
+              ),
             ),
           );
         }),
-      ],
-    );
-  }
-
-  Widget _upgradeTab() {
-    final unlocked = buildHeroRoster()
-        .where((hero) => widget.progress.isUnlocked(hero.name))
-        .toList();
-    return ListView(
-      padding: const EdgeInsets.all(AppLayout.pagePadding),
-      children: [
-        _HeaderLine(
-          icon: Icons.trending_up,
-          title: context.tr(K.upgradeHeroesTitle),
-          subtitle: context.tr(K.upgradeSubtitle, [
-            PlayerProgress.heroLevelCostStep,
-          ]),
-        ),
-        const SizedBox(height: AppLayout.sectionGap),
-        if (unlocked.isEmpty)
-          Text(context.tr(K.unlockHeroFirst))
-        else
-          ...unlocked.map((hero) {
-            final level = widget.progress.levelFor(hero.name);
-            final cost = widget.progress.upgradeCostFor(hero.name);
-            return _HeroProgressTile(
-              hero: _heroWithProgress(hero),
-              progress: widget.progress,
-              trailing: FilledButton.tonalIcon(
-                onPressed: widget.progress.canUpgradeHero(hero.name)
-                    ? () => _mutateProgress(
-                        clearBattle: true,
-                        action: () => widget.progress.upgradeHero(hero.name),
-                      )
-                    : null,
-                icon: const Icon(Icons.add),
-                label: Text(
-                  level >= PlayerProgress.maxPermanentHeroLevel
-                      ? context.tr(K.max)
-                      : context.tr(K.gemsCost, [cost]),
-                ),
-              ),
-            );
-          }),
       ],
     );
   }
@@ -341,35 +275,15 @@ class _StartScreenState extends State<StartScreen> {
     return buildTeamFromProgress(
       selectedHeroNames: selectedHeroes,
       levelFor: widget.progress.levelFor,
-      statPointsFor: (heroName, stat) =>
-          widget.progress.statPointsFor(heroName).valueFor(stat),
+      xpFor: widget.progress.xpFor,
     );
   }
 
   Fighter _heroWithProgress(Fighter hero) {
-    final stats = widget.progress.statPointsFor(hero.name);
-    return heroWithPermanentStats(
+    return heroAtLevel(
       hero,
       widget.progress.levelFor(hero.name),
-      (stat) => stats.valueFor(stat),
-    );
-  }
-
-  Future<void> _openStatAllocationDialog(Fighter hero) async {
-    final total = widget.progress.statPointsFor(hero.name).total;
-    final nextStats = await showDialog<HeroStatPoints>(
-      context: context,
-      builder: (context) {
-        return _StatAllocationDialog(
-          hero: hero,
-          initialStats: widget.progress.statPointsFor(hero.name),
-        );
-      },
-    );
-    if (nextStats == null || nextStats.total != total) return;
-    await _mutateProgress(
-      clearBattle: true,
-      action: () => widget.progress.reallocateHeroStats(hero.name, nextStats),
+      xp: widget.progress.xpFor(hero.name),
     );
   }
 

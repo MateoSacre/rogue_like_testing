@@ -1,3 +1,5 @@
+import 'dart:math';
+
 class GameBalance {
   const GameBalance._();
 
@@ -5,7 +7,6 @@ class GameBalance {
   static const criticalHitChanceDivisor = 10;
   static const criticalHitModifier = 1.5;
   static const minimumDamage = 1.0;
-  static const minimumLevelIncrease = 1.0;
 
   static const waveThemeLength = 5;
   static const maxWaveSize = 6;
@@ -46,11 +47,41 @@ class GameBalance {
   /// Hard cap on the summed double-strike chance from items.
   static const extraAttackChanceCap = .80;
 
-  static const baseXpCap = 100.0;
-  static const xpCapBaseMultiplier = 1.02;
-  static const xpCapCurveMultiplier = .48;
-  static const xpCapSlopeModifier = .00001;
-  static const levelUpStatRatio = .05;
-
   static const autoMultiTargetCount = 3;
+
+  // ── Hero progression ───────────────────────────────────────────────────────
+  // A hero has a single persistent level (in-run XP and duplicate XP feed the
+  // same bar). Stats scale with diminishing returns per level; the XP needed
+  // per level grows geometrically. All four constants are tuned by the
+  // balance simulator.
+
+  static const maxHeroLevel = 50;
+
+  /// Stat bonus added at level 2, as a fraction of the hero's base stat.
+  static const statLevelGain = 0.12;
+
+  /// Each further level adds this share of the previous level's bonus
+  /// (< 1 ⇒ degressive: every level grants less than the last).
+  static const statLevelDecay = 0.93;
+
+  /// XP to go from level 1 to 2.
+  static const baseXpToNextLevel = 80.0;
+
+  /// Geometric growth of the per-level XP requirement.
+  static const xpLevelGrowth = 1.12;
+
+  /// Cumulative stat-bonus fraction at [level] (level 1 = 0, degressive).
+  /// Effective stat = base × (1 + statBonusForLevel(level)).
+  static double statBonusForLevel(int level) {
+    if (level <= 1) return 0;
+    final steps = level - 1;
+    return statLevelGain *
+        (1 - pow(statLevelDecay, steps)) /
+        (1 - statLevelDecay);
+  }
+
+  /// XP required to advance from [level] to [level] + 1.
+  static int xpForLevel(int level) {
+    return (baseXpToNextLevel * pow(xpLevelGrowth, level - 1)).round();
+  }
 }

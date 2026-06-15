@@ -32,10 +32,10 @@ void main() {
     });
     await tester.pumpAndSettle();
 
-    // Default language is French.
+    // Default language is French. Two tabs since the progression rewrite
+    // (Partie + Héros); levels are earned by playing, not bought.
     expect(find.text('RogueLite'), findsOneWidget);
     expect(find.text('Partie'), findsOneWidget);
     expect(find.text('Héros'), findsOneWidget);
-    expect(find.text('Niveaux'), findsOneWidget);
   });
 }

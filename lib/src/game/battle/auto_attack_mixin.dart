@@ -1,6 +1,5 @@
 import '../../models/enums.dart';
 import '../../models/fighter.dart';
-import '../../settings/game_settings.dart';
 import '../targeting.dart';
 import 'battle_state.dart';
 
@@ -15,9 +14,7 @@ mixin AutoAttackMixin on BattleControllerBase {
     required bool useSkills,
     required bool autoBuyHealingItems,
     required bool useHealingItems,
-    required LevelUpMode levelUpMode,
   }) async {
-    currentLevelUpMode = levelUpMode;
     autoAttackEnabled = true;
     if (isAutoAttackRunning || gameOver) return;
     isAutoAttackRunning = true;
@@ -35,7 +32,7 @@ mixin AutoAttackMixin on BattleControllerBase {
         }
 
         if (mobs.isDefeated) {
-          finishWave(levelUpMode);
+          finishWave();
           notify();
           continue;
         }
@@ -44,7 +41,6 @@ mixin AutoAttackMixin on BattleControllerBase {
           selectedHero = null;
           selectedTarget = null;
           await mobTurn(pause: pause, notify: notify);
-          if (pendingLevelUps.isNotEmpty) autoAttackEnabled = false;
           continue;
         }
 
@@ -63,10 +59,9 @@ mixin AutoAttackMixin on BattleControllerBase {
         applyEffectsOnTurnStart(hero);
         if (useHealingItems) useAutoHealingItems();
         if (hero.isAlive && target.isAlive) {
-          _performAutoHeroAction(hero, target, useSkills: useSkills, levelUpMode: levelUpMode);
+          _performAutoHeroAction(hero, target, useSkills: useSkills);
         }
         actedHeroes.add(hero);
-        if (pendingLevelUps.isNotEmpty) autoAttackEnabled = false;
         selectedTarget = null;
         if (useHealingItems) useAutoHealingItems();
         notify();
@@ -154,7 +149,6 @@ mixin AutoAttackMixin on BattleControllerBase {
     Fighter hero,
     Fighter target, {
     required bool useSkills,
-    required LevelUpMode levelUpMode,
   }) {
     final skill = hero.skill;
     if (useSkills && skill != null && skill.isReady) {

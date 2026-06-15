@@ -4,11 +4,9 @@ import '../../models/battle_actions.dart';
 import '../../models/enums.dart';
 import '../../models/fighter.dart';
 import '../../models/item.dart';
-import '../../models/level_up_stat.dart';
 import '../../models/skill.dart';
 import '../../models/team.dart';
 import '../../models/wave_info.dart';
-import '../../settings/game_settings.dart';
 import '../game_balance.dart';
 import '../wave_generator.dart';
 
@@ -38,7 +36,6 @@ abstract class BattleControllerBase implements BattleActions {
   late Team heroes;
 
   // ── Turn tracking ─────────────────────────────────────────────────────────
-  final List<PendingLevelUp> pendingLevelUps = [];
   final List<PendingItemDrop> pendingItemDrops = [];
   final Set<Fighter> actedHeroes = {};
   final Set<Fighter> rewardedMobs = {};
@@ -49,7 +46,6 @@ abstract class BattleControllerBase implements BattleActions {
   Fighter? activeMob;
   Fighter? activeMobTarget;
   ActionMode actionMode = ActionMode.attack;
-  LevelUpMode currentLevelUpMode = LevelUpMode.manual;
 
   // ── Economy ───────────────────────────────────────────────────────────────
   int gold = 0;
@@ -109,7 +105,7 @@ abstract class BattleControllerBase implements BattleActions {
   void rollItemDrop(Fighter mob);
 
   // LevelingMixin
-  void gainXp(Fighter hero, int xp, LevelUpMode levelUpMode);
+  void gainXp(Fighter hero, int xp);
 
   // TurnMixin
   Future<void> mobTurn({
@@ -117,7 +113,7 @@ abstract class BattleControllerBase implements BattleActions {
     required void Function() notify,
   });
   void stopAutoAttack();
-  void finishWave(LevelUpMode levelUpMode);
+  void finishWave();
   void startNextWave();
 
   // AutoAttackMixin

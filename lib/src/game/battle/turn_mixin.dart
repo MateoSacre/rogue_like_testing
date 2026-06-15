@@ -2,7 +2,6 @@ import 'dart:math';
 
 import '../../models/enums.dart';
 import '../../models/team.dart';
-import '../../settings/game_settings.dart';
 import '../game_balance.dart';
 import '../targeting.dart';
 import 'battle_state.dart';
@@ -15,15 +14,13 @@ mixin TurnMixin on BattleControllerBase {
   Future<void> performSelectedAction({
     required Future<void> Function() pause,
     required void Function() notify,
-    required LevelUpMode levelUpMode,
   }) async {
     if (!canAct || selectedHero == null) return;
-    currentLevelUpMode = levelUpMode;
     final hero = selectedHero!;
     applyEffectsOnTurnStart(hero);
     if (!hero.isAlive) {
       actedHeroes.add(hero);
-      await _afterHeroActed(pause: pause, notify: notify, levelUpMode: levelUpMode);
+      await _afterHeroActed(pause: pause, notify: notify);
       return;
     }
 
@@ -41,19 +38,18 @@ mixin TurnMixin on BattleControllerBase {
     }
 
     actedHeroes.add(hero);
-    await _afterHeroActed(pause: pause, notify: notify, levelUpMode: levelUpMode);
+    await _afterHeroActed(pause: pause, notify: notify);
   }
 
   Future<void> _afterHeroActed({
     required Future<void> Function() pause,
     required void Function() notify,
-    required LevelUpMode levelUpMode,
   }) async {
     selectedTarget = null;
     actionMode = ActionMode.attack;
 
     if (mobs.isDefeated) {
-      finishWave(levelUpMode);
+      finishWave();
       return;
     }
     if (availableHeroes.isEmpty) {
@@ -156,7 +152,7 @@ mixin TurnMixin on BattleControllerBase {
         '${GameBalance.maxRoundsPerWave} rounds: heroes win '
         '($heroPct% vs $mobPct%)',
       );
-      finishWave(currentLevelUpMode);
+      finishWave();
     } else {
       _triggerGameOver(
         'Wave $waveCounter lost on HP after '
@@ -194,9 +190,9 @@ mixin TurnMixin on BattleControllerBase {
   // ── Wave transitions ──────────────────────────────────────────────────────
 
   @override
-  void finishWave(LevelUpMode levelUpMode) {
+  void finishWave() {
     final clearedBossWave = waveInfo.finalWaveInTheme;
-    _rewardWave(levelUpMode);
+    _rewardWave();
     if (clearedBossWave &&
         random.nextInt(GameBalance.merchantChanceDivisor) == 0) {
       merchantAvailable = true;
@@ -240,7 +236,7 @@ mixin TurnMixin on BattleControllerBase {
 
   // ── Wave reward ───────────────────────────────────────────────────────────
 
-  void _rewardWave(LevelUpMode levelUpMode) {
+  void _rewardWave() {
     final aliveHeroes = heroes.alive;
     if (aliveHeroes.isEmpty) return;
     var waveXp =
@@ -251,7 +247,7 @@ mixin TurnMixin on BattleControllerBase {
       waveXp *= GameBalance.finalThemeWaveRewardMultiplier;
     }
     for (final hero in aliveHeroes) {
-      gainXp(hero, waveXp, levelUpMode);
+      gainXp(hero, waveXp);
       hero.heal(hero.maxHp * GameBalance.postWaveHealRatio);
     }
     addLog('Wave $waveCounter cleared. Reward: $waveXp xp per hero');

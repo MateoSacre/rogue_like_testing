@@ -52,6 +52,8 @@ class _RogueLiteAppState extends State<RogueLiteApp>
       progress = PlayerProgress.fromJson(
         save?['progression'] as Map<String, dynamic>?,
       );
+      // Very old saves had no `progression` block — reconstruct the roster
+      // (unlocked + level) from the heroes embedded in the saved battle.
       if (save?['progression'] == null) {
         final oldBattle = save?['battle'] as Map<String, dynamic>?;
         progress.gems = oldBattle?['gems'] as int? ?? 0;
@@ -60,8 +62,8 @@ class _RogueLiteAppState extends State<RogueLiteApp>
           final name = hero['name'] as String?;
           if (name == null) continue;
           progress.unlockedHeroes.add(name);
-          progress.heroStats[name] = PlayerProgress.balancedPointsForLevel(
-            hero['level'] as int? ?? 1,
+          progress.heroProgress[name] = HeroProgress(
+            level: (hero['level'] as num?)?.toInt() ?? 1,
           );
         }
       }

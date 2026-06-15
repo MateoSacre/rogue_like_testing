@@ -89,7 +89,6 @@ class BattleController extends BattleControllerBase
     isAutoAttackRunning = false;
     autoAttackWasEnabledOnGameOver = false;
     log.clear();
-    pendingLevelUps.clear();
     pendingItemDrops.clear();
     startNextWave();
   }
@@ -174,7 +173,6 @@ class BattleController extends BattleControllerBase
     autoAttackEnabled = false;
     isAutoAttackRunning = false;
     autoAttackWasEnabledOnGameOver = false;
-    pendingLevelUps.clear();
     pendingItemDrops.clear();
     log
       ..clear()

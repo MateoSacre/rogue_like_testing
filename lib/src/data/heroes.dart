@@ -1,5 +1,5 @@
+import '../game/game_balance.dart';
 import '../models/fighter.dart';
-import '../models/level_up_stat.dart';
 import 'skills.dart';
 
 const List<String> heroNames = [
@@ -79,33 +79,27 @@ List<Fighter> buildHeroRoster() {
 List<Fighter> buildTeamFromProgress({
   required Iterable<String> selectedHeroNames,
   required int Function(String heroName) levelFor,
-  required int Function(String heroName, LevelUpStat stat) statPointsFor,
+  required int Function(String heroName) xpFor,
 }) {
   final selected = selectedHeroNames.toSet();
   return buildHeroRoster()
       .where((hero) => selected.contains(hero.name))
-      .map(
-        (hero) => heroWithPermanentStats(
-          hero,
-          levelFor(hero.name),
-          (stat) => statPointsFor(hero.name, stat),
-        ),
-      )
+      .map((hero) => heroAtLevel(hero, levelFor(hero.name), xp: xpFor(hero.name)))
       .toList();
 }
 
-Fighter heroWithPermanentStats(
-  Fighter baseHero,
-  int permanentLevel,
-  int Function(LevelUpStat stat) statPointsFor,
-) {
+/// Builds [baseHero] scaled to [level]: every base stat is multiplied by the
+/// degressive level bonus. [xp] is the persisted progress toward the next
+/// level. Items, if any, are applied on top afterwards.
+Fighter heroAtLevel(Fighter baseHero, int level, {int xp = 0}) {
   final hero = baseHero.copy();
-  final safeLevel = permanentLevel.clamp(1, 50);
-  hero.maxHp += statPointsFor(LevelUpStat.maxHp);
-  hero.attackPower += statPointsFor(LevelUpStat.attack);
-  hero.baseDefence += statPointsFor(LevelUpStat.defence);
+  final safeLevel = level.clamp(1, GameBalance.maxHeroLevel);
+  final multiplier = 1 + GameBalance.statBonusForLevel(safeLevel);
+  hero.maxHp = baseHero.initialMaxHp * multiplier;
+  hero.attackPower = baseHero.initialAttackPower * multiplier;
+  hero.baseDefence = baseHero.initialBaseDefence * multiplier;
   hero.level = safeLevel;
-  hero.xp = hero.getXpForCurrentLevel();
+  hero.xp = safeLevel >= GameBalance.maxHeroLevel ? 0 : xp;
   hero.hp = hero.maxHp;
   return hero;
 }
