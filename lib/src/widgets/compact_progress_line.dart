@@ -13,21 +13,22 @@ class _CompactProgressLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Label above, bar below spanning the full card width — a Row would
+    // otherwise split label/bar 50/50 regardless of how short the label is.
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label)),
-          const SizedBox(width: AppLayout.tinyGap),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppLayout.progressRadius),
-              child: LinearProgressIndicator(
-                minHeight: 4,
-                value: value.clamp(0, 1).toDouble(),
-                backgroundColor: AppColors.progressTrack(context),
-                valueColor: AlwaysStoppedAnimation(color),
-              ),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 1),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppLayout.progressRadius),
+            child: LinearProgressIndicator(
+              minHeight: 4,
+              value: value.clamp(0, 1).toDouble(),
+              backgroundColor: AppColors.progressTrack(context),
+              valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
         ],

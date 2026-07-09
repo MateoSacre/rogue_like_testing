@@ -19,6 +19,9 @@ class GameBalance {
   /// Maximum number of heroes the player can field in a single run.
   static const maxTeamSize = 6;
 
+  /// Number of persistent, player-editable team presets (start-screen "Run" tab).
+  static const teamSlotCount = 5;
+
   /// A wave that is still unresolved after this many rounds is decided by
   /// comparing the two teams' HP ratio (highest ratio wins the wave).
   /// Prevents endless stalemates.

@@ -7,6 +7,7 @@ import '../data/heroes.dart';
 import '../game/game_balance.dart';
 import '../game/game_screen.dart';
 import '../l10n/app_localizations.dart';
+import '../models/creature_rarity.dart';
 import '../models/fighter.dart';
 import '../persistence/save_service.dart';
 import '../progression/player_progress.dart';
@@ -16,8 +17,10 @@ import '../settings/settings_screen.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../utils/format.dart';
+import '../widgets/creature_tile.dart';
 import '../widgets/rarity_stars.dart';
 import '../widgets/summon_reveal.dart';
+import 'team_editor_screen.dart';
 
 part 'hero_progress_tile.dart';
 part 'header_line.dart';
@@ -47,24 +50,11 @@ class StartScreen extends StatefulWidget {
 }
 
 class _StartScreenState extends State<StartScreen> {
-  late final Set<String> selectedHeroes;
   final Random _random = Random();
 
-  @override
-  void initState() {
-    super.initState();
-    selectedHeroes = _defaultSelection();
-  }
-
-  /// Up to [GameBalance.maxTeamSize] unlocked creatures, in catalog order — a
-  /// launchable team that respects the run cap even when many are unlocked.
-  Set<String> _defaultSelection() {
-    return creatureCatalog
-        .where((creature) => widget.progress.isUnlocked(creature.id))
-        .take(GameBalance.maxTeamSize)
-        .map((creature) => creature.id)
-        .toSet();
-  }
+  /// Team slot most recently launched or edited — used by "continue saved
+  /// run" and by the post-game "play again" flow (see [GameScreen.initialHeroes]).
+  int _lastTeamIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -102,11 +92,6 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Widget _runTab() {
-    // Any unlocked creature (starters + summoned mobs) is playable.
-    final unlocked = creatureCatalog
-        .where((creature) => widget.progress.isUnlocked(creature.id))
-        .map((creature) => creature.buildBase())
-        .toList();
     return ListView(
       padding: const EdgeInsets.all(AppLayout.pagePadding),
       children: [
@@ -114,27 +99,17 @@ class _StartScreenState extends State<StartScreen> {
           icon: Icons.groups,
           title: context.tr(K.startTeamTitle),
           subtitle: widget.progress.hasUnlockedHero
-              ? context.tr(K.heroesSelected, [
-                  selectedHeroes.length,
-                  GameBalance.maxTeamSize,
-                ])
+              ? ''
               : context.tr(K.chooseFirstHero),
         ),
         const SizedBox(height: AppLayout.sectionGap),
         if (!widget.progress.hasUnlockedHero)
           ...starterCreatures.map((c) => _starterHeroTile(c.buildBase()))
         else ...[
-          Wrap(
-            spacing: AppLayout.controlGap,
-            runSpacing: AppLayout.controlGap,
-            children: unlocked.map(_teamChoice).toList(),
-          ),
-          const SizedBox(height: AppLayout.panelGap),
-          FilledButton.icon(
-            onPressed: selectedHeroes.isEmpty ? null : _startNewRun,
-            icon: const Icon(Icons.play_arrow),
-            label: Text(context.tr(K.launchRun)),
-          ),
+          for (var i = 0; i < GameBalance.teamSlotCount; i++) ...[
+            _teamSlotCard(i),
+            const SizedBox(height: AppLayout.controlGap),
+          ],
           if (widget.battleJson != null) ...[
             const SizedBox(height: AppLayout.controlGap),
             OutlinedButton.icon(
@@ -146,6 +121,96 @@ class _StartScreenState extends State<StartScreen> {
         ],
       ],
     );
+  }
+
+  /// One team preset: name + selection count, a compact roster preview, an
+  /// "edit" tap target (opens [TeamEditorScreen]) and a launch button.
+  Widget _teamSlotCard(int index) {
+    final roster = widget.progress.teamRoster(index);
+    return Card(
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(AppLayout.borderRadius),
+            onTap: () => _openTeamEditor(index),
+            child: Padding(
+              padding: const EdgeInsets.all(AppLayout.cardPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          context.tr(K.teamSlotLabel, [index + 1]),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      Text(
+                        context.tr(K.heroesSelected, [
+                          roster.length,
+                          GameBalance.maxTeamSize,
+                        ]),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppLayout.controlGap),
+                  if (roster.isEmpty)
+                    Text(
+                      context.tr(K.teamEmpty),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    )
+                  else
+                    Wrap(
+                      spacing: AppLayout.tinyGap,
+                      runSpacing: AppLayout.tinyGap,
+                      children: roster.map((id) {
+                        final def = creatureById(id);
+                        return CreatureTile(
+                          name: context.l10n.creatureName(id),
+                          rarity: def?.rarity ?? CreatureRarity.common,
+                          imageAsset: def?.portraitAsset,
+                          size: 40,
+                        );
+                      }).toList(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppLayout.cardPadding,
+              0,
+              AppLayout.cardPadding,
+              AppLayout.cardPadding,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: roster.isEmpty ? null : () => _launchTeam(index),
+                icon: const Icon(Icons.play_arrow),
+                label: Text(context.tr(K.launchRun)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openTeamEditor(int index) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => TeamEditorScreen(
+          progress: widget.progress,
+          teamIndex: index,
+          onChanged: () => _mutateProgress(action: () {}, clearBattle: false),
+        ),
+      ),
+    );
+    setState(() {});
   }
 
   Widget _summonTab() {
@@ -207,7 +272,7 @@ class _StartScreenState extends State<StartScreen> {
           ),
         )
         ..add(const SizedBox(height: AppLayout.controlGap))
-        ..addAll(_collectionTiles());
+        ..add(_collectionGrid());
     }
 
     return ListView(
@@ -216,21 +281,43 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 
-  List<Widget> _collectionTiles() {
-    return creatureCatalog
+  /// Brave-Frontier-style square tile grid for every unlocked creature.
+  Widget _collectionGrid() {
+    final tiles = creatureCatalog
         .where((creature) => widget.progress.isUnlocked(creature.id))
-        .map(
-          (creature) => InkWell(
-            borderRadius: BorderRadius.circular(AppLayout.borderRadius),
-            onTap: () => _showCreatureSheet(creature),
-            child: _HeroProgressTile(
-              hero: _heroWithProgress(creature.buildBase()),
-              progress: widget.progress,
-              trailing: const Icon(Icons.chevron_right),
+        .map((creature) {
+          final fighter = _heroWithProgress(creature.buildBase());
+          final name = context.l10n.creatureName(creature.id);
+          return SizedBox(
+            width: AppLayout.creatureTileSize,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CreatureTile(
+                  name: name,
+                  rarity: creature.rarity,
+                  level: fighter.level,
+                  imageAsset: creature.portraitAsset,
+                  onTap: () => _showCreatureSheet(creature),
+                ),
+                const SizedBox(height: AppLayout.tinyGap),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
             ),
-          ),
-        )
+          );
+        })
         .toList();
+    return Wrap(
+      spacing: AppLayout.controlGap,
+      runSpacing: AppLayout.controlGap,
+      children: tiles,
+    );
   }
 
   /// Detailed creature sheet (stats, skill) with the evolution action, opened
@@ -329,15 +416,9 @@ class _StartScreenState extends State<StartScreen> {
     String? newId;
     await _mutateProgress(
       clearBattle: false,
-      action: () {
-        newId = widget.progress.evolve(id);
-        // Carry the team slot over to the evolved form.
-        if (newId != null &&
-            selectedHeroes.remove(id) &&
-            selectedHeroes.length < GameBalance.maxTeamSize) {
-          selectedHeroes.add(newId!);
-        }
-      },
+      // Team slots are carried over to the evolved form by
+      // PlayerProgress.evolve itself.
+      action: () => newId = widget.progress.evolve(id),
     );
     if (newId != null && mounted) {
       await _showEvolution(id, newId!);
@@ -402,12 +483,8 @@ class _StartScreenState extends State<StartScreen> {
       trailing: FilledButton.icon(
         onPressed: () => _mutateProgress(
           clearBattle: false,
-          action: () {
-            widget.progress.claimStarterHero(hero.name);
-            selectedHeroes
-              ..clear()
-              ..add(hero.name);
-          },
+          // Seeds team slot 0 with the starter (see PlayerProgress.claimStarterHero).
+          action: () => widget.progress.claimStarterHero(hero.name),
         ),
         icon: const Icon(Icons.flag),
         label: Text(context.tr(K.choose)),
@@ -415,36 +492,9 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 
-  Widget _teamChoice(Fighter hero) {
-    final selected = selectedHeroes.contains(hero.name);
-    final level = widget.progress.levelFor(hero.name);
-    final atCap = selectedHeroes.length >= GameBalance.maxTeamSize;
-    return FilterChip(
-      selected: selected,
-      avatar: Icon(selected ? Icons.check : Icons.person),
-      label: Text(
-        context.tr(K.heroNameLevel, [
-          context.l10n.creatureName(hero.name),
-          level,
-        ]),
-      ),
-      // Unselected chips are disabled once the run team is full.
-      onSelected: (!selected && atCap)
-          ? null
-          : (value) {
-              setState(() {
-                if (value) {
-                  selectedHeroes.add(hero.name);
-                } else {
-                  selectedHeroes.remove(hero.name);
-                }
-              });
-            },
-    );
-  }
-
-  Future<void> _startNewRun() async {
-    final team = _selectedTeam();
+  Future<void> _launchTeam(int index) async {
+    _lastTeamIndex = index;
+    final team = _teamRoster(index);
     widget.onBattleSaved(null);
     await SaveService.save(
       settings: widget.settings,
@@ -476,7 +526,7 @@ class _StartScreenState extends State<StartScreen> {
           return GameScreen(
             settings: widget.settings,
             progress: widget.progress,
-            initialHeroes: _selectedTeam(),
+            initialHeroes: _teamRoster(_lastTeamIndex),
             initialBattleJson: widget.battleJson,
             onSettingsChanged: widget.onSettingsChanged,
             onProgressChanged: widget.onProgressChanged,
@@ -504,15 +554,12 @@ class _StartScreenState extends State<StartScreen> {
         },
       ),
     );
-    selectedHeroes
-      ..clear()
-      ..addAll(_defaultSelection());
     if (mounted) setState(() {});
   }
 
-  List<Fighter> _selectedTeam() {
+  List<Fighter> _teamRoster(int index) {
     return buildTeamFromProgress(
-      selectedHeroNames: selectedHeroes,
+      selectedHeroNames: widget.progress.teamRoster(index),
       levelFor: widget.progress.levelFor,
       xpFor: widget.progress.xpFor,
     );

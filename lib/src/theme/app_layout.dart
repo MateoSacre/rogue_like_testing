@@ -28,6 +28,10 @@ class AppLayout {
   static const iconSmall = 18.0;
   static const iconMedium = 20.0;
 
+  /// Square side length for a Brave-Frontier-style creature tile (hero
+  /// inventory grid).
+  static const creatureTileSize = 84.0;
+
   static const borderRadius = 8.0;
   static const progressRadius = 4.0;
 

@@ -32,11 +32,24 @@ class PlayerProgress {
     required this.gems,
     required Set<String> unlockedHeroes,
     required Map<String, HeroProgress> heroProgress,
+    List<List<String>>? teams,
   }) : unlockedHeroes = {...unlockedHeroes},
-       heroProgress = {...heroProgress};
+       heroProgress = {...heroProgress},
+       teams = _normalizedTeams(teams);
 
   factory PlayerProgress.initial() {
     return PlayerProgress(gems: 0, unlockedHeroes: {}, heroProgress: {});
+  }
+
+  /// Pads/truncates to exactly [GameBalance.teamSlotCount] slots, each capped
+  /// at [GameBalance.maxTeamSize] ids. Missing slots become empty teams.
+  static List<List<String>> _normalizedTeams(List<List<String>>? source) {
+    return List.generate(GameBalance.teamSlotCount, (i) {
+      final raw = (source != null && i < source.length)
+          ? source[i]
+          : const <String>[];
+      return raw.take(GameBalance.maxTeamSize).toList();
+    });
   }
 
   factory PlayerProgress.fromJson(Map<String, dynamic>? json) {
@@ -89,10 +102,18 @@ class PlayerProgress {
       heroProgress.putIfAbsent(name, HeroProgress.new);
     }
 
+    final teams = (json['teams'] as List<dynamic>? ?? const [])
+        .map(
+          (slot) =>
+              (slot as List<dynamic>? ?? const []).whereType<String>().toList(),
+        )
+        .toList();
+
     return PlayerProgress(
       gems: json['gems'] as int? ?? 0,
       unlockedHeroes: unlocked,
       heroProgress: heroProgress,
+      teams: teams,
     );
   }
 
@@ -101,6 +122,10 @@ class PlayerProgress {
   int gems;
   final Set<String> unlockedHeroes;
   final Map<String, HeroProgress> heroProgress;
+
+  /// [GameBalance.teamSlotCount] player-editable team presets, each a list of
+  /// (up to [GameBalance.maxTeamSize]) creature ids in selection order.
+  final List<List<String>> teams;
 
   bool get hasUnlockedHero => unlockedHeroes.isNotEmpty;
 
@@ -122,7 +147,41 @@ class PlayerProgress {
     if (!canClaimStarterHero(heroName)) return false;
     unlockedHeroes.add(heroName);
     _ensureEntry(heroName);
+    // Seed the first team preset so a run can launch immediately.
+    toggleInTeam(0, heroName);
     return true;
+  }
+
+  // ── Team presets ────────────────────────────────────────────────────────
+
+  /// Currently valid roster for team slot [index] (0..teamSlotCount-1):
+  /// stored ids that are still unlocked, in selection order. Ids left behind
+  /// by e.g. an evolution consumed elsewhere are silently dropped here.
+  List<String> teamRoster(int index) =>
+      teams[index].where(isUnlocked).toList();
+
+  /// Whether [heroId] is currently selected in team slot [index].
+  bool isInTeam(int index, String heroId) => teams[index].contains(heroId);
+
+  /// Toggles [heroId] in team slot [index]: deselects it if already selected,
+  /// otherwise selects it — unless the slot is already at the team-size cap,
+  /// in which case nothing happens.
+  void toggleInTeam(int index, String heroId) {
+    final slot = teams[index];
+    if (slot.contains(heroId)) {
+      slot.remove(heroId);
+    } else if (slot.length < GameBalance.maxTeamSize) {
+      slot.add(heroId);
+    }
+  }
+
+  /// Replaces [oldId] with [newId] in every team slot that contains it. Used
+  /// when a hero evolves into a new catalog id so saved teams stay valid.
+  void _replaceInTeams(String oldId, String newId) {
+    for (final slot in teams) {
+      final i = slot.indexOf(oldId);
+      if (i != -1) slot[i] = newId;
+    }
   }
 
   // ── Summoning ───────────────────────────────────────────────────────────
@@ -219,6 +278,7 @@ class PlayerProgress {
       ..add(targetId);
     heroProgress.remove(heroName);
     heroProgress[targetId] = HeroProgress();
+    _replaceInTeams(heroName, targetId);
     return targetId;
   }
 
@@ -237,6 +297,7 @@ class PlayerProgress {
       'heroProgress': heroProgress.map(
         (name, entry) => MapEntry(name, entry.toJson()),
       ),
+      'teams': teams,
     };
   }
 }

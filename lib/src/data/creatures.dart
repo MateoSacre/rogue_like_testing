@@ -27,6 +27,7 @@ class CreatureDef {
     this.category,
     this.isStarter = false,
     this.summonable = true,
+    this.portraitAsset,
   });
 
   /// Stable identity key — matches `Fighter.name`, the save/progress key and
@@ -47,6 +48,12 @@ class CreatureDef {
   /// Whether this creature can be obtained from the summon pool. Evolution-only
   /// forms are false (reachable only by evolving their base).
   final bool summonable;
+
+  /// Optional portrait image asset path (e.g. `assets/creatures/slime.png`).
+  /// No art is bundled yet, so this is null for every entry — tiles fall back
+  /// to a placeholder. Set it per creature once art exists; nothing else
+  /// needs to change.
+  final String? portraitAsset;
 
   /// Builds a fresh level-1 hero form of this creature.
   final Fighter Function() buildBase;

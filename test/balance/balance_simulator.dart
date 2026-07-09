@@ -8,6 +8,8 @@
 /// `flutter test` without a device.
 library;
 
+import 'dart:math';
+
 import 'package:flutter_testing_shit/src/data/creatures.dart';
 import 'package:flutter_testing_shit/src/data/heroes.dart';
 import 'package:flutter_testing_shit/src/game/battle_controller.dart';
@@ -95,6 +97,44 @@ List<List<String>> allCompositions(List<String> names) {
     if (bySize != 0) return bySize;
     return a.join().compareTo(b.join());
   });
+  return result;
+}
+
+/// Deterministically samples up to [samplesPerSize] unique team compositions
+/// (order-independent, no repeated creature within a team) for each size in
+/// [sizes], drawn from [pool].
+///
+/// Used where the full pool is too large to enumerate exhaustively (see
+/// [allCompositions]) — e.g. spot-checking 4★/5★ creature teams, since ~19
+/// eligible creatures already means tens of thousands of size-6 subsets.
+/// Deterministic across runs via [seed] so reports stay comparable.
+List<List<String>> sampleCompositions(
+  List<String> pool, {
+  required List<int> sizes,
+  required int samplesPerSize,
+  int seed = 0,
+}) {
+  final rng = Random(seed);
+  final seen = <String>{};
+  final result = <List<String>>[];
+  for (final size in sizes) {
+    if (size <= 0 || size > pool.length) continue;
+    var picked = 0;
+    var attempts = 0;
+    // Bounded retries: once the pool is nearly exhausted for this size there
+    // may be fewer distinct combinations than requested — stop instead of
+    // looping forever.
+    final maxAttempts = samplesPerSize * 20;
+    while (picked < samplesPerSize && attempts < maxAttempts) {
+      attempts++;
+      final subset = ([...pool]..shuffle(rng)).take(size).toList()..sort();
+      final key = subset.join('|');
+      if (seen.add(key)) {
+        result.add(subset);
+        picked++;
+      }
+    }
+  }
   return result;
 }
 
@@ -220,9 +260,33 @@ Future<List<CompositionResult>> simulateAll({
   bool useSkills = kUseSkills,
   CellStartCallback? onCellStart,
   CellDoneCallback? onCellDone,
-}) async {
+}) {
   final names = roster ?? heroNames;
-  final compositions = allCompositions(names);
+  return simulateCompositions(
+    allCompositions(names),
+    levels: levels,
+    trials: trials,
+    maxWaves: maxWaves,
+    useSkills: useSkills,
+    onCellStart: onCellStart,
+    onCellDone: onCellDone,
+  );
+}
+
+/// Simulates an explicit list of [compositions] across all level tiers.
+///
+/// Shared by [simulateAll] (exhaustive subsets of a small roster) and callers
+/// that instead pass a [sampleCompositions] result (a large pool that can't be
+/// enumerated exhaustively).
+Future<List<CompositionResult>> simulateCompositions(
+  List<List<String>> compositions, {
+  List<int> levels = kLevelTiers,
+  int trials = kTrialsPerCell,
+  int maxWaves = kMaxWaves,
+  bool useSkills = kUseSkills,
+  CellStartCallback? onCellStart,
+  CellDoneCallback? onCellDone,
+}) async {
   final results = <CompositionResult>[];
   final total = compositions.length * levels.length;
   var index = 0;

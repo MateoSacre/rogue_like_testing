@@ -11,10 +11,21 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_testing_shit/src/data/creatures.dart';
 import 'package:flutter_testing_shit/src/data/heroes.dart';
 import 'package:flutter_testing_shit/src/game/game_balance.dart';
 
 import 'balance/balance_simulator.dart';
+
+/// Team sizes sampled for the 4★/5★ spot-check (decision 12 — the ~19
+/// eligible creatures make exhaustive enumeration infeasible above size 2).
+const List<int> kHighTierSizes = [1, 2, 3, 4, 5, 6];
+
+/// Unique compositions sampled per size, via `--dart-define=balanceHighTierSamples=N`.
+const int kHighTierSamplesPerSize = int.fromEnvironment(
+  'balanceHighTierSamples',
+  defaultValue: 6,
+);
 
 void main() {
   test(
@@ -54,7 +65,7 @@ void main() {
       );
 
       _printTable(results);
-      final path = _writeCsv(results);
+      final path = _writeCsv(results, 'balance_report.csv');
       // ignore: avoid_print
       print('\nCSV written to: $path');
 
@@ -64,6 +75,58 @@ void main() {
         results.every((r) => r.byLevel.length == kLevelTiers.length),
         isTrue,
       );
+
+      // --- 4★/5★ spot-check (decision 12) -------------------------------
+      // The full-enumeration approach above only works because the roster is
+      // 6 starters (63 subsets). The catalog also has ~19 epic/legendary
+      // creatures (bestiary epics + the starters' title-evolution lines), and
+      // C(19, 6) alone is > 27k — so instead we sample a handful of unique
+      // teams per size.
+      final highTierPool = creatureCatalog
+          .where((c) => c.rarity.stars == 4 || c.rarity.stars == 5)
+          .map((c) => c.id)
+          .toList();
+      final highTierCompositions = sampleCompositions(
+        highTierPool,
+        sizes: kHighTierSizes,
+        samplesPerSize: kHighTierSamplesPerSize,
+      );
+
+      // ignore: avoid_print
+      print(
+        '\n=== Échantillon 4★/5★ (${highTierPool.length} créatures éligibles, '
+        '${highTierCompositions.length} équipes échantillonnées) ===\n',
+      );
+
+      final highTierResults = await simulateCompositions(
+        highTierCompositions,
+        onCellStart: (ctx) {
+          // ignore: avoid_print
+          print(
+            '${_progress(ctx)} ▶ ${_padLabel(ctx.label)} @ Lvl ${_padLevel(ctx.level)}  '
+            '($kTrialsPerCell runs)',
+          );
+        },
+        onCellDone: (ctx, result, elapsed) {
+          // ignore: avoid_print
+          print(
+            '${_progress(ctx)} ✓ ${_padLabel(ctx.label)} @ Lvl ${_padLevel(ctx.level)}  '
+            '→ médiane ${result.display.padLeft(4)} '
+            '(best ${result.best}, worst ${result.worst})  '
+            '[${_ms(elapsed)}]',
+          );
+        },
+      );
+
+      _printTable(highTierResults);
+      final highTierPath = _writeCsv(
+        highTierResults,
+        'balance_report_hightier.csv',
+      );
+      // ignore: avoid_print
+      print('\nCSV written to: $highTierPath');
+
+      expect(highTierResults, isNotEmpty);
     },
     // Hundreds of headless runs; well beyond the 30s default.
     timeout: const Timeout(Duration(minutes: 15)),
@@ -151,7 +214,7 @@ void _printTable(List<CompositionResult> results) {
   }
 }
 
-String _writeCsv(List<CompositionResult> results) {
+String _writeCsv(List<CompositionResult> results, String fileName) {
   final buffer = StringBuffer()
     ..writeln(
       'composition,size,'
@@ -177,7 +240,7 @@ String _writeCsv(List<CompositionResult> results) {
     );
   }
 
-  final file = File('balance_report.csv');
+  final file = File(fileName);
   file.writeAsStringSync(buffer.toString());
   return file.absolute.path;
 }

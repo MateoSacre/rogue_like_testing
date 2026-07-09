@@ -35,6 +35,8 @@ enum K {
   heroesSelected, // '{0}/{1} héros sélectionnés'
   chooseFirstHero,
   launchRun,
+  teamSlotLabel, // 'Équipe {0}'
+  teamEmpty,
   continueSavedRun,
   buyHeroesTitle,
   gemsPerHero, // '{0} gemmes par héros'
@@ -50,6 +52,7 @@ enum K {
   // Hero progress tile
   tileStatLine, // 'Niv {0}  PV {1}  ATK {2}  DEF {3}'
   tilePermanentPoints, // '+{0} PV  +{1} ATK  +{2} DEF  {3} libres'
+  levelBadge, // 'Niv {0}'
 
   // Stat allocation dialog
   statsOf, // 'Stats de {0}'
@@ -280,6 +283,8 @@ const Map<K, String> _fr = {
   K.heroesSelected: '{0}/{1} héros sélectionnés',
   K.chooseFirstHero: 'Choisis ton premier héros gratuitement',
   K.launchRun: 'Lancer une partie',
+  K.teamSlotLabel: 'Équipe {0}',
+  K.teamEmpty: 'Aucun héros sélectionné',
   K.continueSavedRun: 'Continuer la partie sauvegardée',
   K.buyHeroesTitle: 'Acheter des héros',
   K.gemsPerHero: '{0} gemmes par héros',
@@ -295,6 +300,7 @@ const Map<K, String> _fr = {
 
   K.tileStatLine: 'Niv {0}  PV {1}  ATK {2}  DEF {3}',
   K.tilePermanentPoints: '+{0} PV  +{1} ATK  +{2} DEF  {3} libres',
+  K.levelBadge: 'Niv {0}',
 
   K.statsOf: 'Stats de {0}',
   K.levelUnassigned: 'Niveau {0} — Points non attribués : {1}',
@@ -514,6 +520,8 @@ const Map<K, String> _en = {
   K.heroesSelected: '{0}/{1} heroes selected',
   K.chooseFirstHero: 'Choose your first hero for free',
   K.launchRun: 'Start a run',
+  K.teamSlotLabel: 'Team {0}',
+  K.teamEmpty: 'No hero selected',
   K.continueSavedRun: 'Continue saved run',
   K.buyHeroesTitle: 'Buy heroes',
   K.gemsPerHero: '{0} gems per hero',
@@ -529,6 +537,7 @@ const Map<K, String> _en = {
 
   K.tileStatLine: 'Lv {0}  HP {1}  ATK {2}  DEF {3}',
   K.tilePermanentPoints: '+{0} HP  +{1} ATK  +{2} DEF  {3} free',
+  K.levelBadge: 'Lv {0}',
 
   K.statsOf: '{0} stats',
   K.levelUnassigned: 'Level {0} — Unassigned points: {1}',

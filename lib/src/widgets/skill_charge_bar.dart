@@ -54,7 +54,13 @@ class _SkillChargeBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppLayout.controlGap),
-            Text('${skill.charge}/${skill.maxCharge}'),
+            Flexible(
+              child: Text(
+                '${skill.charge}/${skill.maxCharge}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: AppLayout.tinyGap),
