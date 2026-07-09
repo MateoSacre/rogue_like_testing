@@ -16,7 +16,7 @@ class _CharacterSheetDialog extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              fighter.name,
+              context.l10n.creatureName(fighter.name),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -35,6 +35,23 @@ class _CharacterSheetDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (fighter.rarity != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppLayout.tinyGap),
+                  child: Row(
+                    children: [
+                      RarityStars(rarity: fighter.rarity!, size: 16),
+                      const SizedBox(width: AppLayout.compactGap),
+                      Text(
+                        context.l10n.creatureRarity(fighter.rarity!),
+                        style: TextStyle(
+                          color: AppColors.creatureRarity(fighter.rarity!),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               _sectionTitle(context, K.sheetStats),
               Text(context.tr(K.hp, [fmt(fighter.hp), fmt(fighter.maxHp)])),
               Text(_atkDefLine(context)),
@@ -65,7 +82,7 @@ class _CharacterSheetDialog extends StatelessWidget {
                 if (fighter.itemCount == 0)
                   Text(context.tr(K.sheetNoItems))
                 else
-                  ..._itemRows(context),
+                  EquipmentGrid(fighter: fighter),
               ],
             ],
           ),
@@ -94,12 +111,8 @@ class _CharacterSheetDialog extends StatelessWidget {
   }
 
   String _atkDefLine(BuildContext context) {
-    final base = context.tr(K.atkDef, [
-      fmt(fighter.attackPower),
-      fmt(fighter.baseDefence),
-    ]);
-    final buff = fighter.defence - fighter.baseDefence;
-    return buff > 0 ? '$base (+${fmt(buff)})' : base;
+    // Effective values include active buffs (attack/defence) and items.
+    return context.tr(K.atkDef, [fmt(fighter.attack), fmt(fighter.defence)]);
   }
 
   // ── Derived combat stats ──────────────────────────────────────────────────
@@ -107,7 +120,7 @@ class _CharacterSheetDialog extends StatelessWidget {
   List<Widget> _combatLines(BuildContext context) {
     final lines = <String>[
       context.tr(K.sheetCrit, [
-        100 ~/ GameBalance.criticalHitChanceDivisor,
+        _pct(fighter.critChance),
         fmt(GameBalance.criticalHitModifier),
       ]),
     ];
@@ -120,7 +133,44 @@ class _CharacterSheetDialog extends StatelessWidget {
       lines.add(context.tr(K.sheetLifesteal, [_pct(fighter.lifesteal)]));
     }
     lines.addAll(_onHitSummaryLines(context, fighter.onHitEffects));
+    lines.addAll(_resistLines(context));
     return lines.map(Text.new).toList();
+  }
+
+  /// Resistance relics carried by the fighter (DoT reduction/negation/immunity
+  /// per type, plus lifesteal reduction).
+  List<String> _resistLines(BuildContext context) {
+    final lines = <String>[];
+    for (final type in [DotType.poison, DotType.bleed, DotType.burn]) {
+      final flat = fighter.dotFlatReduction(type);
+      final negate = fighter.dotNegateChance(type);
+      final label = _dotTypeLabel(context, type);
+      if (negate >= 1) {
+        lines.add(context.tr(K.sheetResistImmune, [label]));
+      } else {
+        if (flat > 0) {
+          lines.add(context.tr(K.sheetResistFlat, [label, fmt(flat)]));
+        }
+        if (negate > 0) {
+          lines.add(context.tr(K.sheetResistNegate, [label, _pct(negate)]));
+        }
+      }
+    }
+    if (fighter.lifestealResist > 0) {
+      lines.add(
+        context.tr(K.sheetLifestealResist, [_pct(fighter.lifestealResist)]),
+      );
+    }
+    return lines;
+  }
+
+  String _dotTypeLabel(BuildContext context, DotType type) {
+    return switch (type) {
+      DotType.poison => context.tr(K.dotPoison),
+      DotType.bleed => context.tr(K.dotBleed),
+      DotType.burn => context.tr(K.dotBurn),
+      DotType.generic => '',
+    };
   }
 
   /// One line per distinct on-hit effect name, with the effective chance
@@ -136,7 +186,10 @@ class _CharacterSheetDialog extends StatelessWidget {
     return byName.entries.map((entry) {
       final sources = entry.value;
       final chance = combinedProcChance(sources.map((e) => e.chance));
-      final damage = sources.map((e) => e.damage).reduce(max);
+      // DoT ticks now scale with the holder's ATK (snapshot at proc time).
+      final damage = sources
+          .map((e) => e.tickDamage(fighter.attack))
+          .reduce(max);
       final duration = sources.map((e) => e.duration).reduce(max);
       return context.tr(K.sheetOnHit, [
         _dotLabel(context, entry.key),
@@ -167,117 +220,6 @@ class _CharacterSheetDialog extends StatelessWidget {
   }
 
   // ── Items ─────────────────────────────────────────────────────────────────
-
-  List<Widget> _itemRows(BuildContext context) {
-    final rows = <Widget>[];
-    for (final slot in [
-      ItemSlot.helmet,
-      ItemSlot.gloves,
-      ItemSlot.chest,
-      ItemSlot.weapon,
-    ]) {
-      final id = fighter.equipment[slot];
-      final def = id == null ? null : itemById(id);
-      rows.add(_itemRow(context, slot: slot, def: def, count: 1));
-    }
-    // Relics grouped by id, insertion order preserved.
-    final counts = <String, int>{};
-    for (final id in fighter.relics) {
-      counts[id] = (counts[id] ?? 0) + 1;
-    }
-    for (final entry in counts.entries) {
-      final def = itemById(entry.key);
-      if (def == null) continue;
-      rows.add(
-        _itemRow(context, slot: ItemSlot.relic, def: def, count: entry.value),
-      );
-    }
-    return rows;
-  }
-
-  Widget _itemRow(
-    BuildContext context, {
-    required ItemSlot slot,
-    required ItemDef? def,
-    required int count,
-  }) {
-    final color = def == null
-        ? Theme.of(context).colorScheme.outline
-        : _itemRarityColor(def.rarity);
-    final label = def == null
-        ? '${context.l10n.itemSlot(slot)} : ${context.tr(K.itemSlotEmpty)}'
-        : '${context.l10n.itemSlot(slot)} : '
-              '${context.l10n.localized(def.name)}'
-              '${count > 1 ? ' ×$count' : ''}';
-    final row = Padding(
-      padding: const EdgeInsets.only(bottom: AppLayout.tinyGap),
-      child: Row(
-        children: [
-          Icon(_itemSlotIcon(slot), size: AppLayout.iconSmall, color: color),
-          const SizedBox(width: AppLayout.compactGap),
-          Expanded(
-            child: Text(label, style: TextStyle(color: color)),
-          ),
-        ],
-      ),
-    );
-    if (def == null) return row;
-    return Tooltip(
-      message: _itemTooltip(context, def, count),
-      triggerMode: TooltipTriggerMode.tap,
-      showDuration: const Duration(seconds: 8),
-      waitDuration: Duration.zero,
-      preferBelow: false,
-      child: row,
-    );
-  }
-
-  /// Individual description, plus the combined effect for stacked relics.
-  String _itemTooltip(BuildContext context, ItemDef def, int count) {
-    final lines = <String>[context.l10n.localized(def.description)];
-    if (count > 1) {
-      lines.add('');
-      lines.add(context.tr(K.sheetCumulative, [count]));
-      lines.addAll(_cumulativeLines(context, def, count));
-    }
-    return lines.join('\n');
-  }
-
-  List<String> _cumulativeLines(BuildContext context, ItemDef def, int count) {
-    final lines = <String>[];
-    final stats = <String>[
-      if (def.hpBonus > 0)
-        '${context.tr(K.statHp)} +${fmt(def.hpBonus * count)}',
-      if (def.atkBonus > 0)
-        '${context.tr(K.statAtk)} +${fmt(def.atkBonus * count)}',
-      if (def.defBonus > 0)
-        '${context.tr(K.statDef)} +${fmt(def.defBonus * count)}',
-    ];
-    if (stats.isNotEmpty) lines.add(stats.join(' · '));
-    if (def.extraAttackChance > 0) {
-      final total = min(
-        def.extraAttackChance * count,
-        GameBalance.extraAttackChanceCap,
-      );
-      lines.add(context.tr(K.sheetDoubleStrike, [_pct(total)]));
-    }
-    if (def.lifesteal > 0) {
-      lines.add(context.tr(K.sheetLifesteal, [_pct(def.lifesteal * count)]));
-    }
-    final onHit = def.onHit;
-    if (onHit != null) {
-      final chance = combinedProcChance(List.filled(count, onHit.chance));
-      lines.add(
-        context.tr(K.sheetOnHit, [
-          _dotLabel(context, onHit.name),
-          _pct(chance),
-          fmt(onHit.damage),
-          onHit.duration,
-        ]),
-      );
-    }
-    return lines;
-  }
 
   String _dotLabel(BuildContext context, String effectName) {
     return switch (effectName) {

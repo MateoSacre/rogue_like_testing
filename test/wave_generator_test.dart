@@ -27,7 +27,9 @@ void main() {
         ..currentCategory = MobCategory.monsters
         ..wavesRemainingInTheme = 1;
 
-      final wave = generator.generate(1000);
+      // A budget a bit above the boss value (mythic ≈ 160): the boss is then
+      // the only mob in the selection window, so it is reliably picked.
+      final wave = generator.generate(200);
 
       expect(wave.category, MobCategory.monsters);
       expect(wave.finalWaveInTheme, isTrue);

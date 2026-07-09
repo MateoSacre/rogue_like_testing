@@ -1,5 +1,7 @@
 import '../game/game_balance.dart';
+import '../models/creature_rarity.dart';
 import '../models/fighter.dart';
+import '../models/skill.dart';
 import 'skills.dart';
 
 const List<String> heroNames = [
@@ -11,81 +13,33 @@ const List<String> heroNames = [
   'Mage',
 ];
 
+/// The six classic heroes are summonable creatures at [CreatureRarity.rare]
+/// (3★); their stats derive from that rarity's anchors modulated by the
+/// per-hero role weights below — same system as the bestiary.
+const _heroRarity = CreatureRarity.rare;
+
+/// Builds a 3★ hero with stats derived from the rarity budget and [weights].
+Fighter _hero(String name, StatWeights weights, Skill skill) {
+  return Fighter(
+    name: name,
+    maxHp: GameBalance.creatureHp(_heroRarity, weights),
+    attackPower: GameBalance.creatureAttack(_heroRarity, weights),
+    baseDefence: GameBalance.creatureDefence(_heroRarity, weights),
+    skill: skill,
+    isHero: true,
+    rarity: _heroRarity,
+  );
+}
+
 List<Fighter> buildBaseTeam() {
   return [
-    Fighter(
-      name: 'Paladin',
-      maxHp: 25,
-      attackPower: 3,
-      baseDefence: 7,
-      skill: protectSkill(),
-      isHero: true,
-    ),
-    // Fighter(
-    //   name: 'Hero',
-    //   maxHp: 20,
-    //   attackPower: 5,
-    //   baseDefence: 5,
-    //   skill: powerSlashSkill(),
-    //   isHero: true,
-    // ),
-    Fighter(
-      name: 'Warrior',
-      maxHp: 15,
-      attackPower: 7,
-      baseDefence: 3,
-      skill: deepCutSkill(),
-      isHero: true,
-    ),
-    Fighter(
-      name: 'Artificier',
-      maxHp: 10,
-      attackPower: 10,
-      baseDefence: 5,
-      skill: nukeSkill(),
-      isHero: true,
-    ),
-    Fighter(
-      name: 'Archer',
-      maxHp: 15,
-      attackPower: 5,
-      baseDefence: 5,
-      skill: poisonArrowSkill(),
-      isHero: true,
-    ),
-    Fighter(
-      name: 'Priest',
-      maxHp: 15,
-      attackPower: 2,
-      baseDefence: 3,
-      skill: magicHealingSkill(),
-      isHero: true,
-    ),
-    Fighter(
-      name: 'Mage',
-      maxHp: 15,
-      attackPower: 8,
-      baseDefence: 2,
-      skill: tripleBeamSkill(),
-      isHero: true,
-    ),
+    _hero('Paladin', CreatureRole.tank, protectSkill()),
+    _hero('Warrior', CreatureRole.bruiser, deepCutSkill()),
+    _hero('Artificier', CreatureRole.caster, nukeSkill()),
+    _hero('Archer', CreatureRole.skirmisher, poisonArrowSkill()),
+    _hero('Priest', CreatureRole.support, magicHealingSkill()),
+    _hero('Mage', CreatureRole.caster, tripleBeamSkill()),
   ];
-}
-
-List<Fighter> buildHeroRoster() {
-  return buildBaseTeam();
-}
-
-List<Fighter> buildTeamFromProgress({
-  required Iterable<String> selectedHeroNames,
-  required int Function(String heroName) levelFor,
-  required int Function(String heroName) xpFor,
-}) {
-  final selected = selectedHeroNames.toSet();
-  return buildHeroRoster()
-      .where((hero) => selected.contains(hero.name))
-      .map((hero) => heroAtLevel(hero, levelFor(hero.name), xp: xpFor(hero.name)))
-      .toList();
 }
 
 /// Builds [baseHero] scaled to [level]: every base stat is multiplied by the

@@ -50,14 +50,16 @@ void main() {
       }
     });
 
-    test('each standard rarity tier offers all five item kinds', () {
+    test('each standard rarity tier offers all item slots', () {
       for (final rarity in [
         ItemRarity.common,
         ItemRarity.uncommon,
         ItemRarity.legendary,
       ]) {
         final pool = itemsOfRarity(rarity);
-        expect(pool.length, 5, reason: 'pool of $rarity');
+        // At least one item per slot (extra resist/crit relics may add more).
+        expect(pool.length, greaterThanOrEqualTo(ItemSlot.values.length),
+            reason: 'pool of $rarity');
         expect(pool.map((i) => i.slot).toSet(), ItemSlot.values.toSet());
       }
     });

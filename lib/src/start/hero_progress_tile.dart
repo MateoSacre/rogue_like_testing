@@ -24,9 +24,11 @@ class _HeroProgressTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    hero.name,
+                    context.l10n.creatureName(hero.name),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
+                  if (hero.rarity != null)
+                    RarityStars(rarity: hero.rarity!, size: 13),
                   const SizedBox(height: AppLayout.tinyGap),
                   Text(
                     context.tr(K.tileStatLine, [

@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
+import '../data/creatures.dart';
 import '../data/heroes.dart';
 import '../game/game_balance.dart';
 import '../game/game_screen.dart';
@@ -7,10 +10,14 @@ import '../l10n/app_localizations.dart';
 import '../models/fighter.dart';
 import '../persistence/save_service.dart';
 import '../progression/player_progress.dart';
+import '../progression/summon.dart';
 import '../settings/game_settings.dart';
 import '../settings/settings_screen.dart';
+import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../utils/format.dart';
+import '../widgets/rarity_stars.dart';
+import '../widgets/summon_reveal.dart';
 
 part 'hero_progress_tile.dart';
 part 'header_line.dart';
@@ -41,11 +48,22 @@ class StartScreen extends StatefulWidget {
 
 class _StartScreenState extends State<StartScreen> {
   late final Set<String> selectedHeroes;
+  final Random _random = Random();
 
   @override
   void initState() {
     super.initState();
-    selectedHeroes = {...widget.progress.unlockedHeroes};
+    selectedHeroes = _defaultSelection();
+  }
+
+  /// Up to [GameBalance.maxTeamSize] unlocked creatures, in catalog order — a
+  /// launchable team that respects the run cap even when many are unlocked.
+  Set<String> _defaultSelection() {
+    return creatureCatalog
+        .where((creature) => widget.progress.isUnlocked(creature.id))
+        .take(GameBalance.maxTeamSize)
+        .map((creature) => creature.id)
+        .toSet();
   }
 
   @override
@@ -72,20 +90,22 @@ class _StartScreenState extends State<StartScreen> {
             tabs: [
               Tab(icon: const Icon(Icons.play_arrow), text: context.tr(K.tabRun)),
               Tab(
-                icon: const Icon(Icons.storefront),
-                text: context.tr(K.tabHeroes),
+                icon: const Icon(Icons.auto_awesome),
+                text: context.tr(K.tabSummon),
               ),
             ],
           ),
         ),
-        body: SafeArea(child: TabBarView(children: [_runTab(), _shopTab()])),
+        body: SafeArea(child: TabBarView(children: [_runTab(), _summonTab()])),
       ),
     );
   }
 
   Widget _runTab() {
-    final unlocked = buildHeroRoster()
-        .where((hero) => widget.progress.isUnlocked(hero.name))
+    // Any unlocked creature (starters + summoned mobs) is playable.
+    final unlocked = creatureCatalog
+        .where((creature) => widget.progress.isUnlocked(creature.id))
+        .map((creature) => creature.buildBase())
         .toList();
     return ListView(
       padding: const EdgeInsets.all(AppLayout.pagePadding),
@@ -96,13 +116,13 @@ class _StartScreenState extends State<StartScreen> {
           subtitle: widget.progress.hasUnlockedHero
               ? context.tr(K.heroesSelected, [
                   selectedHeroes.length,
-                  unlocked.length,
+                  GameBalance.maxTeamSize,
                 ])
               : context.tr(K.chooseFirstHero),
         ),
         const SizedBox(height: AppLayout.sectionGap),
         if (!widget.progress.hasUnlockedHero)
-          ...buildHeroRoster().map(_starterHeroTile)
+          ...starterCreatures.map((c) => _starterHeroTile(c.buildBase()))
         else ...[
           Wrap(
             spacing: AppLayout.controlGap,
@@ -128,41 +148,251 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 
-  Widget _shopTab() {
+  Widget _summonTab() {
+    final children = <Widget>[
+      _HeaderLine(
+        icon: Icons.auto_awesome,
+        title: context.tr(K.summonTitle),
+        subtitle: context.tr(K.summonSubtitle, [
+          GameBalance.summonCostSingle,
+          GameBalance.summonCostTen,
+        ]),
+      ),
+      const SizedBox(height: AppLayout.sectionGap),
+    ];
+
+    if (!widget.progress.hasUnlockedHero) {
+      // The first summon is the free starter choice, done in the Run tab.
+      children.add(
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppLayout.cardPadding),
+            child: Text(context.tr(K.summonFirstFree)),
+          ),
+        ),
+      );
+    } else {
+      children
+        ..add(
+          Wrap(
+            spacing: AppLayout.controlGap,
+            runSpacing: AppLayout.controlGap,
+            children: [
+              FilledButton.icon(
+                onPressed: widget.progress.canSummonSingle
+                    ? () => _summon(1)
+                    : null,
+                icon: const Icon(Icons.auto_awesome),
+                label: Text(
+                  context.tr(K.summonX1, [GameBalance.summonCostSingle]),
+                ),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: widget.progress.canSummonTen
+                    ? () => _summon(GameBalance.summonBatchSize)
+                    : null,
+                icon: const Icon(Icons.auto_awesome_motion),
+                label: Text(
+                  context.tr(K.summonX10, [GameBalance.summonCostTen]),
+                ),
+              ),
+            ],
+          ),
+        )
+        ..add(const SizedBox(height: AppLayout.sectionGap))
+        ..add(
+          _HeaderLine(
+            icon: Icons.collections_bookmark,
+            title: context.tr(K.collectionTitle),
+          ),
+        )
+        ..add(const SizedBox(height: AppLayout.controlGap))
+        ..addAll(_collectionTiles());
+    }
+
     return ListView(
       padding: const EdgeInsets.all(AppLayout.pagePadding),
-      children: [
-        _HeaderLine(
-          icon: Icons.diamond,
-          title: context.tr(K.buyHeroesTitle),
-          subtitle: context.tr(K.gemsPerHero, [PlayerProgress.heroCost]),
-        ),
-        const SizedBox(height: AppLayout.sectionGap),
-        ...buildHeroRoster().map((hero) {
-          final unlocked = widget.progress.isUnlocked(hero.name);
-          final progressHero = unlocked ? _heroWithProgress(hero) : hero;
-          return _HeroProgressTile(
-            hero: progressHero,
-            progress: widget.progress,
-            trailing: FilledButton.tonalIcon(
-              onPressed: unlocked || !widget.progress.canBuyHero(hero.name)
-                  ? null
-                  : () => _mutateProgress(
-                      clearBattle: true,
-                      action: () {
-                        widget.progress.buyHero(hero.name);
-                        selectedHeroes.add(hero.name);
-                      },
-                    ),
-              icon: Icon(unlocked ? Icons.check : Icons.shopping_bag),
-              label: Text(
-                unlocked ? context.tr(K.unlocked) : '${PlayerProgress.heroCost}',
+      children: children,
+    );
+  }
+
+  List<Widget> _collectionTiles() {
+    return creatureCatalog
+        .where((creature) => widget.progress.isUnlocked(creature.id))
+        .map(
+          (creature) => InkWell(
+            borderRadius: BorderRadius.circular(AppLayout.borderRadius),
+            onTap: () => _showCreatureSheet(creature),
+            child: _HeroProgressTile(
+              hero: _heroWithProgress(creature.buildBase()),
+              progress: widget.progress,
+              trailing: const Icon(Icons.chevron_right),
+            ),
+          ),
+        )
+        .toList();
+  }
+
+  /// Detailed creature sheet (stats, skill) with the evolution action, opened
+  /// from a collection tile.
+  Future<void> _showCreatureSheet(CreatureDef def) {
+    final fighter = _heroWithProgress(def.buildBase());
+    final cost = widget.progress.evolutionCostOf(def.id);
+    final skill = fighter.skill;
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                context.l10n.creatureName(def.id),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          );
-        }),
-      ],
+            Text(
+              context.tr(K.level, [fighter.level]),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: AppLayout.dialogWidth(context, 380),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  RarityStars(rarity: def.rarity, size: 18),
+                  const SizedBox(width: AppLayout.compactGap),
+                  Text(
+                    context.l10n.creatureRarity(def.rarity),
+                    style: TextStyle(
+                      color: AppColors.creatureRarity(def.rarity),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppLayout.sectionGap),
+              Text(context.tr(K.hp, [fmt(fighter.maxHp), fmt(fighter.maxHp)])),
+              Text(
+                context.tr(K.atkDef, [
+                  fmt(fighter.attackPower),
+                  fmt(fighter.baseDefence),
+                ]),
+              ),
+              Text(
+                context.tr(K.sheetCrit, [
+                  (fighter.critChance * 100).round(),
+                  fmt(GameBalance.criticalHitModifier),
+                ]),
+              ),
+              if (skill != null) ...[
+                const SizedBox(height: AppLayout.controlGap),
+                Text(
+                  context.tr(K.skillChargeLine, [
+                    skill.name,
+                    skill.description,
+                    skill.charge,
+                    skill.maxCharge,
+                  ]),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          if (cost != null)
+            FilledButton.tonalIcon(
+              onPressed: widget.progress.canEvolve(def.id)
+                  ? () {
+                      Navigator.of(context).pop();
+                      _evolve(def.id);
+                    }
+                  : null,
+              icon: const Icon(Icons.upgrade),
+              label: Text(context.tr(K.evolveCost, [cost])),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.tr(K.close)),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _evolve(String id) async {
+    String? newId;
+    await _mutateProgress(
+      clearBattle: false,
+      action: () {
+        newId = widget.progress.evolve(id);
+        // Carry the team slot over to the evolved form.
+        if (newId != null &&
+            selectedHeroes.remove(id) &&
+            selectedHeroes.length < GameBalance.maxTeamSize) {
+          selectedHeroes.add(newId!);
+        }
+      },
+    );
+    if (newId != null && mounted) {
+      await _showEvolution(id, newId!);
+    }
+  }
+
+  Future<void> _showEvolution(String fromId, String toId) {
+    final rarity = creatureById(toId)?.rarity;
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.tr(K.evolveTitle)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (rarity != null) ...[
+              RarityStars(rarity: rarity, size: 20),
+              const SizedBox(height: AppLayout.controlGap),
+            ],
+            Text(
+              context.tr(K.evolveResult, [
+                context.l10n.creatureName(fromId),
+                context.l10n.creatureName(toId),
+              ]),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.tr(K.close)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _summon(int count) async {
+    var results = const <SummonResult>[];
+    await _mutateProgress(
+      clearBattle: false,
+      action: () {
+        results = count == 1
+            ? [?widget.progress.summonSingle(_random)]
+            : widget.progress.summonTen(_random);
+      },
+    );
+    if (results.isNotEmpty && mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => SummonRevealDialog(results: results),
+      );
+    }
   }
 
   Widget _starterHeroTile(Fighter hero) {
@@ -188,19 +418,28 @@ class _StartScreenState extends State<StartScreen> {
   Widget _teamChoice(Fighter hero) {
     final selected = selectedHeroes.contains(hero.name);
     final level = widget.progress.levelFor(hero.name);
+    final atCap = selectedHeroes.length >= GameBalance.maxTeamSize;
     return FilterChip(
       selected: selected,
       avatar: Icon(selected ? Icons.check : Icons.person),
-      label: Text(context.tr(K.heroNameLevel, [hero.name, level])),
-      onSelected: (value) {
-        setState(() {
-          if (value) {
-            selectedHeroes.add(hero.name);
-          } else {
-            selectedHeroes.remove(hero.name);
-          }
-        });
-      },
+      label: Text(
+        context.tr(K.heroNameLevel, [
+          context.l10n.creatureName(hero.name),
+          level,
+        ]),
+      ),
+      // Unselected chips are disabled once the run team is full.
+      onSelected: (!selected && atCap)
+          ? null
+          : (value) {
+              setState(() {
+                if (value) {
+                  selectedHeroes.add(hero.name);
+                } else {
+                  selectedHeroes.remove(hero.name);
+                }
+              });
+            },
     );
   }
 
@@ -267,7 +506,7 @@ class _StartScreenState extends State<StartScreen> {
     );
     selectedHeroes
       ..clear()
-      ..addAll(widget.progress.unlockedHeroes);
+      ..addAll(_defaultSelection());
     if (mounted) setState(() {});
   }
 

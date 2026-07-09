@@ -50,10 +50,16 @@ final List<ItemDef> itemCatalog = [
     rarity: ItemRarity.common,
     name: LocalizedText('Croc de loup', 'Wolf Fang'),
     description: LocalizedText(
-      '25% de saignement à l\'attaque (2 dégâts/tour, 3 tours)',
-      '25% bleed on hit (2 damage/turn, 3 turns)',
+      '25% de saignement à l\'attaque (10% ATK/tour, 3 tours)',
+      '25% bleed on hit (10% ATK/turn, 3 turns)',
     ),
-    onHit: ItemOnHit(name: 'Bleed', chance: .25, damage: 2, duration: 3),
+    onHit: ItemOnHit(
+      name: 'Bleed',
+      chance: .25,
+      atkRatio: .10,
+      duration: 3,
+      dotType: DotType.bleed,
+    ),
   ),
 
   // ── Uncommon (green) ──────────────────────────────────────────────────────
@@ -99,10 +105,16 @@ final List<ItemDef> itemCatalog = [
     rarity: ItemRarity.uncommon,
     name: LocalizedText('Fiole de venin', 'Venom Vial'),
     description: LocalizedText(
-      '30% de poison à l\'attaque (3 dégâts/tour, 4 tours)',
-      '30% poison on hit (3 damage/turn, 4 turns)',
+      '30% de poison à l\'attaque (12% ATK/tour, 4 tours)',
+      '30% poison on hit (12% ATK/turn, 4 turns)',
     ),
-    onHit: ItemOnHit(name: 'Poison', chance: .30, damage: 3, duration: 4),
+    onHit: ItemOnHit(
+      name: 'Poison',
+      chance: .30,
+      atkRatio: .12,
+      duration: 4,
+      dotType: DotType.poison,
+    ),
   ),
 
   // ── Legendary (red) ───────────────────────────────────────────────────────
@@ -154,6 +166,119 @@ final List<ItemDef> itemCatalog = [
     lifesteal: .20,
   ),
 
+  // ── Resistance & crit relics (dilute the powerful-relic pool) ─────────────
+  // Common: flat DoT reduction (strong early, fades late) and a small crit bump.
+  const ItemDef(
+    id: 'relic_poison_ward',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.common,
+    name: LocalizedText('Amulette anti-venin', 'Antivenom Charm'),
+    description: LocalizedText(
+      '-4 dégâts de poison par tour',
+      '-4 poison damage per turn',
+    ),
+    dotResist: DotResist(type: DotType.poison, flatReduction: 4),
+  ),
+  const ItemDef(
+    id: 'relic_bleed_ward',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.common,
+    name: LocalizedText('Bandages', 'Bandages'),
+    description: LocalizedText(
+      '-4 dégâts de saignement par tour',
+      '-4 bleed damage per turn',
+    ),
+    dotResist: DotResist(type: DotType.bleed, flatReduction: 4),
+  ),
+  const ItemDef(
+    id: 'relic_crit_minor',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.common,
+    name: LocalizedText('Œil affûté', 'Keen Eye'),
+    description: LocalizedText('+3% de chance critique', '+3% crit chance'),
+    critChanceBonus: .03,
+  ),
+
+  // Uncommon: a chance to negate DoT ticks, partial grievous wounds, more crit.
+  const ItemDef(
+    id: 'relic_poison_guard',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Sérum purificateur', 'Cleansing Serum'),
+    description: LocalizedText(
+      '30% d\'annuler chaque dégât de poison',
+      '30% to negate each poison tick',
+    ),
+    dotResist: DotResist(type: DotType.poison, negateChance: .30),
+  ),
+  const ItemDef(
+    id: 'relic_bleed_guard',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Garrot runique', 'Runic Tourniquet'),
+    description: LocalizedText(
+      '30% d\'annuler chaque dégât de saignement',
+      '30% to negate each bleed tick',
+    ),
+    dotResist: DotResist(type: DotType.bleed, negateChance: .30),
+  ),
+  const ItemDef(
+    id: 'relic_grievous',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Sceau de plaies', 'Grievous Seal'),
+    description: LocalizedText(
+      'Réduit de 50% le vol de vie des attaquants',
+      'Reduces attackers\' lifesteal by 50%',
+    ),
+    lifestealResist: .50,
+  ),
+  const ItemDef(
+    id: 'relic_crit',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.uncommon,
+    name: LocalizedText('Lentille de précision', 'Precision Lens'),
+    description: LocalizedText('+8% de chance critique', '+8% crit chance'),
+    critChanceBonus: .08,
+  ),
+
+  // Legendary: full DoT immunity, full grievous wounds, big crit.
+  const ItemDef(
+    id: 'relic_poison_immunity',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Cœur d\'antidote', 'Antidote Core'),
+    description: LocalizedText('Immunité au poison', 'Immune to poison'),
+    dotResist: DotResist(type: DotType.poison, negateChance: 1),
+  ),
+  const ItemDef(
+    id: 'relic_bleed_immunity',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Peau de fer', 'Ironskin'),
+    description: LocalizedText('Immunité au saignement', 'Immune to bleed'),
+    dotResist: DotResist(type: DotType.bleed, negateChance: 1),
+  ),
+  const ItemDef(
+    id: 'relic_null_lifesteal',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Stigmate mortel', 'Mortal Stigma'),
+    description: LocalizedText(
+      'Annule totalement le vol de vie des attaquants',
+      'Fully negates attackers\' lifesteal',
+    ),
+    lifestealResist: 1,
+  ),
+  const ItemDef(
+    id: 'relic_crit_major',
+    slot: ItemSlot.relic,
+    rarity: ItemRarity.legendary,
+    name: LocalizedText('Couronne du bourreau', 'Executioner Crown'),
+    description: LocalizedText('+18% de chance critique', '+18% crit chance'),
+    critChanceBonus: .18,
+  ),
+
   // ── Boss items (yellow) — one per category, themed on its boss ────────────
   const ItemDef(
     id: 'boss_monsters',
@@ -161,11 +286,17 @@ final List<ItemDef> itemCatalog = [
     rarity: ItemRarity.boss,
     name: LocalizedText('Croc du Fossoyeur de mondes', 'World Ender\'s Fang'),
     description: LocalizedText(
-      '+6 ATK, 35% de poison à l\'attaque (4 dégâts/tour, 4 tours)',
-      '+6 ATK, 35% poison on hit (4 damage/turn, 4 turns)',
+      '+6 ATK, 35% de poison à l\'attaque (18% ATK/tour, 4 tours)',
+      '+6 ATK, 35% poison on hit (18% ATK/turn, 4 turns)',
     ),
     atkBonus: 6,
-    onHit: ItemOnHit(name: 'Poison', chance: .35, damage: 4, duration: 4),
+    onHit: ItemOnHit(
+      name: 'Poison',
+      chance: .35,
+      atkRatio: .18,
+      duration: 4,
+      dotType: DotType.poison,
+    ),
   ),
   const ItemDef(
     id: 'boss_bandits',
@@ -173,11 +304,17 @@ final List<ItemDef> itemCatalog = [
     rarity: ItemRarity.boss,
     name: LocalizedText('Lame du Tyran', 'Tyrant\'s Blade'),
     description: LocalizedText(
-      '+20% de double frappe, 25% de saignement (3 dégâts/tour, 3 tours)',
-      '+20% double strike, 25% bleed (3 damage/turn, 3 turns)',
+      '+20% de double frappe, 25% de saignement (15% ATK/tour, 3 tours)',
+      '+20% double strike, 25% bleed (15% ATK/turn, 3 turns)',
     ),
     extraAttackChance: .20,
-    onHit: ItemOnHit(name: 'Bleed', chance: .25, damage: 3, duration: 3),
+    onHit: ItemOnHit(
+      name: 'Bleed',
+      chance: .25,
+      atkRatio: .15,
+      duration: 3,
+      dotType: DotType.bleed,
+    ),
   ),
   const ItemDef(
     id: 'boss_cultists',
@@ -185,10 +322,16 @@ final List<ItemDef> itemCatalog = [
     rarity: ItemRarity.boss,
     name: LocalizedText('Hymne virulent', 'Virulent Hymn'),
     description: LocalizedText(
-      '50% de poison à l\'attaque (4 dégâts/tour, 5 tours)',
-      '50% poison on hit (4 damage/turn, 5 turns)',
+      '50% de poison à l\'attaque (22% ATK/tour, 5 tours)',
+      '50% poison on hit (22% ATK/turn, 5 turns)',
     ),
-    onHit: ItemOnHit(name: 'Poison', chance: .50, damage: 4, duration: 5),
+    onHit: ItemOnHit(
+      name: 'Poison',
+      chance: .50,
+      atkRatio: .22,
+      duration: 5,
+      dotType: DotType.poison,
+    ),
   ),
   const ItemDef(
     id: 'boss_mages',
@@ -196,10 +339,16 @@ final List<ItemDef> itemCatalog = [
     rarity: ItemRarity.boss,
     name: LocalizedText('Cendres du Cataclysme', 'Cataclysm Ash'),
     description: LocalizedText(
-      '35% de brûlure à l\'attaque (5 dégâts/tour, 3 tours)',
-      '35% burn on hit (5 damage/turn, 3 turns)',
+      '35% de brûlure à l\'attaque (20% ATK/tour, 3 tours)',
+      '35% burn on hit (20% ATK/turn, 3 turns)',
     ),
-    onHit: ItemOnHit(name: 'Burn', chance: .35, damage: 5, duration: 3),
+    onHit: ItemOnHit(
+      name: 'Burn',
+      chance: .35,
+      atkRatio: .20,
+      duration: 3,
+      dotType: DotType.burn,
+    ),
   ),
   const ItemDef(
     id: 'boss_empire',

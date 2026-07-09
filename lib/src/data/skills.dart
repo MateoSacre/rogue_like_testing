@@ -65,7 +65,8 @@ Skill powerSlashSkill() {
 }
 
 Skill deepCutSkill() {
-  const bleedDamage = 5.0;
+  // Bleed scales with the caster's (buffed, item-boosted) ATK at cast time.
+  const bleedAtkRatio = 0.30;
   return Skill(
     name: 'Deep cut',
     chargeMax: 4,
@@ -75,7 +76,7 @@ Skill deepCutSkill() {
     preview: (battle, caster, target) => SkillPreview.damage(
       battle.computeDamagePreview(caster, target),
       dot: SkillPreviewDot.bleed,
-      dotDamage: bleedDamage,
+      dotDamage: caster.attack * bleedAtkRatio,
     ),
     apply: (battle, caster, targets) {
       for (final target in targets) {
@@ -85,7 +86,8 @@ Skill deepCutSkill() {
             name: 'Deep cut',
             kind: EffectKind.recurrent,
             duration: 5,
-            damage: bleedDamage,
+            damage: caster.attack * bleedAtkRatio,
+            dotType: DotType.bleed,
           ),
         );
         battle.addLog('${target.name} is bleeding');
@@ -98,7 +100,7 @@ Skill poisonArrowSkill({
   String name = 'Poison Arrow',
   TargetType targetType = TargetType.enemySingleHighestHp,
   int duration = 5,
-  double damage = 2,
+  double atkRatio = 0.20,
 }) {
   return Skill(
     name: name,
@@ -109,7 +111,7 @@ Skill poisonArrowSkill({
     preview: (battle, caster, target) => SkillPreview.damage(
       battle.computeDamagePreview(caster, target),
       dot: SkillPreviewDot.poison,
-      dotDamage: damage,
+      dotDamage: caster.attack * atkRatio,
     ),
     apply: (battle, caster, targets) {
       for (final target in targets) {
@@ -123,7 +125,8 @@ Skill poisonArrowSkill({
               name: name,
               kind: EffectKind.recurrent,
               duration: duration,
-              damage: damage,
+              damage: caster.attack * atkRatio,
+              dotType: DotType.poison,
             ),
           );
           battle.addLog('${target.name} is poisoned');
@@ -144,8 +147,8 @@ Skill explosionSkill({
   // Explosion damage ignores defence, so apply and preview share this.
   double amountFor(Fighter caster) {
     return isMultiplier
-        ? caster.attackPower * (damage ?? 1.5)
-        : (damage ?? caster.attackPower * 1.5);
+        ? caster.attack * (damage ?? 1.5)
+        : (damage ?? caster.attack * 1.5);
   }
 
   return Skill(
@@ -186,21 +189,23 @@ Skill tripleBeamSkill() {
     cooldown: 5,
     targetType: TargetType.enemyMultiTarget,
     targetCount: 3,
-    damage: 16,
+    damage: 112,
   );
 }
 
 Skill splashSkill() {
+  const splashDamage = 7.0;
   return Skill(
     name: 'Splash',
     chargeMax: 2,
     targetType: TargetType.enemyTeam,
-    description: 'Deals 1 damage to all enemies',
+    description: 'Deals 7 damage to all enemies',
     shouldUse: (_, targets) => targets.length > 1,
-    preview: (battle, caster, target) => SkillPreview.damage(min(target.hp, 1)),
+    preview: (battle, caster, target) =>
+        SkillPreview.damage(min(target.hp, splashDamage)),
     apply: (battle, caster, targets) {
       for (final target in targets) {
-        final dealt = battle.skillDamage(caster, target, 1);
+        final dealt = battle.skillDamage(caster, target, splashDamage);
         battle.addLog(
           '${caster.name} splashes ${target.name} for ${fmt(dealt)} dmg',
         );
@@ -210,7 +215,7 @@ Skill splashSkill() {
 }
 
 Skill magicHealingSkill() {
-  const healRatio = .30;
+  const healRatio = .20;
   return Skill(
     name: 'Magic Healing',
     chargeMax: 3,
@@ -231,14 +236,53 @@ Skill magicHealingSkill() {
   );
 }
 
-const _protectDefenceBonus = 10.0;
+const _protectDefenceBonus = 20.0;
+
+/// Generic buff skill: grants flat ATK/DEF and/or crit-chance to its targets
+/// for [duration] turns (no stacking of the same-named buff).
+Skill buffSkill({
+  required String name,
+  required String description,
+  int cooldown = 4,
+  TargetType targetType = TargetType.allyTeam,
+  double attackBonus = 0,
+  double defenceBonus = 0,
+  double critChanceBonus = 0,
+  int duration = 3,
+}) {
+  return Skill(
+    name: name,
+    chargeMax: cooldown,
+    targetType: targetType,
+    description: description,
+    preview: defenceBonus > 0
+        ? (battle, caster, target) => SkillPreview.defence(defenceBonus)
+        : null,
+    apply: (battle, caster, targets) {
+      for (final target in targets) {
+        if (target.effects.any((effect) => effect.name == name)) continue;
+        target.effects.add(
+          StatusEffect(
+            name: name,
+            kind: EffectKind.buff,
+            duration: duration,
+            attackBonus: attackBonus,
+            defenceBonus: defenceBonus,
+            critChanceBonus: critChanceBonus,
+          ),
+        );
+        battle.addLog('${caster.name} empowers ${target.name} ($name)');
+      }
+    },
+  );
+}
 
 Skill protectSkill() {
   return Skill(
     name: 'Protect',
     chargeMax: 3,
     targetType: TargetType.allySingleLowestHp,
-    description: 'Give +10 defence for 3 turns',
+    description: 'Give +20 defence for 3 turns',
     preview: (battle, caster, target) =>
         const SkillPreview.defence(_protectDefenceBonus),
     apply: (battle, caster, targets) {

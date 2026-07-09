@@ -11,6 +11,10 @@ enum TargetType {
 
 enum EffectKind { recurrent, buff }
 
+/// Damage-over-time family, used to target resistance relics. [generic] covers
+/// any DoT that has no specific family.
+enum DotType { generic, poison, bleed, burn }
+
 enum AiType { dumb, random, killer, damager, effectDealer, effectStacker }
 
 enum MobCategory {

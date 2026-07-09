@@ -30,14 +30,14 @@ mixin CombatMixin on BattleControllerBase {
   void basicAttack(Fighter attacker, Fighter target, {double modifier = 1}) {
     if (!attacker.isAlive || !target.isAlive) return;
     var damageModifier = modifier;
-    if (random.nextInt(GameBalance.criticalHitChanceDivisor) == 0) {
+    if (random.nextDouble() < attacker.critChance) {
       damageModifier *= GameBalance.criticalHitModifier;
       addLog('Critical hit: ${attacker.name}');
     }
     final damage = computeAttackDamage(attacker, target, modifier: damageModifier);
     final dealt = target.takeDamage(damage);
     addLog('${attacker.name} attacks ${target.name} for ${fmt(dealt)} dmg');
-    if (attacker.isHero && dealt > 0) {
+    if (dealt > 0) {
       _applyItemProcs(attacker, target, dealt);
     }
     if (!target.isAlive) {
@@ -50,14 +50,14 @@ mixin CombatMixin on BattleControllerBase {
   @override
   double skillDamage(Fighter attacker, Fighter target, double amount) {
     final dealt = target.takeDamage(amount);
-    if (attacker.isHero && dealt > 0) {
+    if (dealt > 0) {
       _applyItemProcs(attacker, target, dealt);
     }
     return dealt;
   }
 
   void _applyItemProcs(Fighter attacker, Fighter target, double dealt) {
-    final steal = attacker.lifesteal;
+    final steal = attacker.lifesteal * (1 - target.lifestealResist);
     if (steal > 0) {
       final healed = attacker.heal(dealt * steal);
       if (healed > 0) {
@@ -76,7 +76,8 @@ mixin CombatMixin on BattleControllerBase {
           name: onHit.name,
           kind: EffectKind.recurrent,
           duration: onHit.duration,
-          damage: onHit.damage,
+          damage: onHit.tickDamage(attacker.attack),
+          dotType: onHit.dotType,
         ),
       );
       addLog('${target.name} suffers ${onHit.name}');
@@ -85,7 +86,6 @@ mixin CombatMixin on BattleControllerBase {
 
   void _maybeExtraAttack(Fighter attacker, Fighter target, double modifier) {
     if (_extraAttackInProgress ||
-        !attacker.isHero ||
         !attacker.isAlive ||
         !target.isAlive) {
       return;
@@ -108,7 +108,7 @@ mixin CombatMixin on BattleControllerBase {
   }) {
     return max(
       GameBalance.minimumDamage,
-      attacker.attackPower * modifier - target.defence,
+      attacker.attack * modifier - target.defence,
     );
   }
 
@@ -159,8 +159,18 @@ mixin CombatMixin on BattleControllerBase {
         .where((e) => e.kind == EffectKind.recurrent)
         .toList();
     for (final effect in recurrent) {
-      final dealt = fighter.takeDamage(effect.damage);
-      addLog('${effect.name} hits ${fighter.name} for ${fmt(dealt)}');
+      // Resistance relics: roll a per-tick negate, else trim by flat reduction.
+      if (effect.damage > 0 &&
+          random.nextDouble() < fighter.dotNegateChance(effect.dotType)) {
+        addLog('${fighter.name} resists ${effect.name}');
+      } else {
+        final amount = max(
+          0.0,
+          effect.damage - fighter.dotFlatReduction(effect.dotType),
+        );
+        final dealt = fighter.takeDamage(amount);
+        addLog('${effect.name} hits ${fighter.name} for ${fmt(dealt)}');
+      }
       effect.duration--;
     }
     fighter.effects.removeWhere((e) => e.duration <= 0);

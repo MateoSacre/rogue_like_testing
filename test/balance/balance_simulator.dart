@@ -8,6 +8,7 @@
 /// `flutter test` without a device.
 library;
 
+import 'package:flutter_testing_shit/src/data/creatures.dart';
 import 'package:flutter_testing_shit/src/data/heroes.dart';
 import 'package:flutter_testing_shit/src/game/battle_controller.dart';
 import 'package:flutter_testing_shit/src/models/fighter.dart';

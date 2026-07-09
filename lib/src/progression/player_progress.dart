@@ -1,5 +1,9 @@
+import 'dart:math';
+
+import '../data/creatures.dart';
 import '../data/heroes.dart';
 import '../game/game_balance.dart';
+import 'summon.dart';
 
 /// Persistent level + XP for one hero. The level is unified: in-run XP and
 /// (later) duplicate XP both feed this single bar, and it carries across runs.
@@ -92,7 +96,6 @@ class PlayerProgress {
     );
   }
 
-  static const heroCost = 50;
   static int get maxLevel => GameBalance.maxHeroLevel;
 
   int gems;
@@ -122,18 +125,101 @@ class PlayerProgress {
     return true;
   }
 
-  bool canBuyHero(String heroName) {
-    return heroNames.contains(heroName) &&
-        !isUnlocked(heroName) &&
-        gems >= heroCost;
+  // ── Summoning ───────────────────────────────────────────────────────────
+
+  bool get canSummonSingle => gems >= GameBalance.summonCostSingle;
+  bool get canSummonTen => gems >= GameBalance.summonCostTen;
+
+  /// Spends gems for a single summon and applies the result. Returns null when
+  /// the player cannot afford it.
+  SummonResult? summonSingle(Random random) {
+    if (!canSummonSingle) return null;
+    gems -= GameBalance.summonCostSingle;
+    return _applySummon(rollSummon(random));
   }
 
-  bool buyHero(String heroName) {
-    if (!canBuyHero(heroName)) return false;
-    gems -= heroCost;
-    unlockedHeroes.add(heroName);
-    _ensureEntry(heroName);
-    return true;
+  /// Spends gems for a ten-pull (epic pity guaranteed) and applies every
+  /// result. Returns an empty list when the player cannot afford it.
+  List<SummonResult> summonTen(Random random) {
+    if (!canSummonTen) return const [];
+    gems -= GameBalance.summonCostTen;
+    return rollSummonBatch(random).map(_applySummon).toList();
+  }
+
+  /// Unlocks a freshly summoned creature, or converts a duplicate into fixed
+  /// XP toward its persistent level.
+  SummonResult _applySummon(CreatureDef def) {
+    if (!isUnlocked(def.id)) {
+      unlockedHeroes.add(def.id);
+      _ensureEntry(def.id);
+      return SummonResult(
+        creatureId: def.id,
+        rarity: def.rarity,
+        isNew: true,
+        xpGained: 0,
+      );
+    }
+    _ensureEntry(def.id);
+    final entry = heroProgress[def.id]!;
+    final granted = entry.level >= GameBalance.maxHeroLevel
+        ? 0
+        : GameBalance.summonDuplicateXp;
+    _grantXp(entry, granted);
+    return SummonResult(
+      creatureId: def.id,
+      rarity: def.rarity,
+      isNew: false,
+      xpGained: granted,
+    );
+  }
+
+  /// Advances a persisted level/XP entry, mirroring the in-run level-up loop
+  /// (`LevelingMixin.gainXp`) but on level/XP only — stats are derived later.
+  void _grantXp(HeroProgress entry, int xp) {
+    if (xp <= 0 || entry.level >= GameBalance.maxHeroLevel) return;
+    entry.xp += xp;
+    while (entry.level < GameBalance.maxHeroLevel &&
+        entry.xp >= GameBalance.xpForLevel(entry.level)) {
+      entry.xp -= GameBalance.xpForLevel(entry.level);
+      entry.level++;
+    }
+    if (entry.level >= GameBalance.maxHeroLevel) entry.xp = 0;
+  }
+
+  // ── Evolution ───────────────────────────────────────────────────────────
+
+  /// Id of the form [heroName] evolves into, or null if terminal/unknown.
+  String? evolutionTargetOf(String heroName) => evolutionTargetId(heroName);
+
+  /// Gem cost to evolve [heroName], or null when it cannot evolve.
+  int? evolutionCostOf(String heroName) {
+    final targetId = evolutionTargetId(heroName);
+    final target = targetId == null ? null : creatureById(targetId);
+    return target == null ? null : GameBalance.evolutionCost(target.rarity);
+  }
+
+  /// Whether [heroName] is unlocked, maxed, has a next form and is affordable.
+  bool canEvolve(String heroName) {
+    final cost = evolutionCostOf(heroName);
+    return cost != null &&
+        isUnlocked(heroName) &&
+        levelFor(heroName) >= GameBalance.maxHeroLevel &&
+        gems >= cost;
+  }
+
+  /// Evolves [heroName] into its next form: spends gems, unlocks the target at
+  /// level 1 and consumes the source. Returns the new form's id, or null when
+  /// the evolution is not allowed.
+  String? evolve(String heroName) {
+    if (!canEvolve(heroName)) return null;
+    final targetId = evolutionTargetId(heroName)!;
+    gems -= evolutionCostOf(heroName)!;
+    unlockedHeroes
+      ..remove(heroName)
+      ..add(targetId);
+    heroProgress.remove(heroName);
+    heroProgress[targetId] = HeroProgress();
+    return targetId;
   }
 
   /// Writes a hero's level/XP back after a run (only for unlocked heroes).

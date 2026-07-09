@@ -187,7 +187,7 @@ class _InventoryHeroTarget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  hero.name,
+                  context.l10n.creatureName(hero.name),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall,

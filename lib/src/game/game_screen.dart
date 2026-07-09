@@ -18,7 +18,9 @@ import '../settings/settings_screen.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../utils/format.dart';
+import '../widgets/equipment_grid.dart';
 import '../widgets/fighter_card.dart';
+import '../widgets/rarity_stars.dart';
 import 'battle_controller.dart';
 import 'game_balance.dart';
 
@@ -466,7 +468,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   fighter.isHero
                                       ? context.tr(K.ally)
                                       : context.tr(K.enemy),
-                                  fighter.name,
+                                  context.l10n.creatureName(fighter.name),
                                 ]),
                               ),
                             ),
@@ -647,7 +649,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        hero.name,
+                        context.l10n.creatureName(hero.name),
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       if (subtitleFor != null) Text(subtitleFor(hero)),

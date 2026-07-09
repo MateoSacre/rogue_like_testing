@@ -9,6 +9,7 @@ import '../models/status_effect.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../utils/format.dart';
+import 'rarity_stars.dart';
 
 part 'compact_progress_line.dart';
 
@@ -79,7 +80,7 @@ class FighterCard extends StatelessWidget {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    fighter.name,
+                                    context.l10n.creatureName(fighter.name),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: Theme.of(
@@ -100,6 +101,8 @@ class FighterCard extends StatelessWidget {
                                   ),
                               ],
                             ),
+                            if (fighter.rarity != null)
+                              RarityStars(rarity: fighter.rarity!, size: 9),
                             const SizedBox(height: AppLayout.tinyGap),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(
@@ -200,7 +203,7 @@ class FighterCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                fighter.name,
+                                context.l10n.creatureName(fighter.name),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.titleMedium,
@@ -222,6 +225,8 @@ class FighterCard extends StatelessWidget {
                               ),
                           ],
                         ),
+                        if (fighter.rarity != null)
+                          RarityStars(rarity: fighter.rarity!, size: 11),
                         const SizedBox(height: AppLayout.controlGap),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(

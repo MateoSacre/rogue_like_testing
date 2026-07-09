@@ -81,7 +81,7 @@ class _ItemDropDialog extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(hero.name),
+                            Text(context.l10n.creatureName(hero.name)),
                             Text(
                               _consequenceFor(context, hero),
                               style: Theme.of(context).textTheme.labelSmall,

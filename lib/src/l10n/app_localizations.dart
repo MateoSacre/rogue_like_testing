@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import '../data/creatures.dart';
+import '../models/creature_rarity.dart';
 import '../models/enums.dart';
 import '../models/item.dart';
 import '../settings/game_settings.dart';
@@ -209,6 +211,10 @@ enum K {
   sheetLifesteal, // 'Vol de vie : {0}%'
   sheetOnHit, // '{0} à l'attaque : {1}% ({2} dégâts/tour, {3} tours)'
   sheetCumulative, // 'Cumulé ×{0} :'
+  sheetResistImmune, // 'Immunité {0}'
+  sheetResistFlat, // 'Résistance {0} : -{1}/tour'
+  sheetResistNegate, // 'Résistance {0} : {1}% d'annulation'
+  sheetLifestealResist, // 'Vol de vie subi : -{0}%'
   dotBurn,
 
   // Items
@@ -227,6 +233,33 @@ enum K {
   rarityUncommon,
   rarityLegendary,
   rarityBoss,
+
+  // Creature rarity (1★ … 6★)
+  creatureRarityCommon,
+  creatureRarityUncommon,
+  creatureRarityRare,
+  creatureRarityEpic,
+  creatureRarityLegendary,
+  creatureRarityMythic,
+
+  // Summon
+  tabSummon,
+  summonTitle,
+  summonSubtitle, // 'x1 : {0} gemmes · x10 : {1} gemmes — un 4★ garanti'
+  summonX1, // 'Invoquer ×1 ({0})'
+  summonX10, // 'Invoquer ×10 ({0})'
+  summonFirstFree, // hint to use the free first summon in the Run tab
+  summonResultsTitle,
+  summonNew,
+  summonDuplicate, // 'Doublon +{0} XP'
+  summonDuplicateMaxed,
+  summonTapToContinue,
+  collectionTitle,
+
+  // Evolution
+  evolveCost, // 'Évoluer ({0})'
+  evolveTitle,
+  evolveResult, // '{0} → {1}'
 }
 
 const Map<K, String> _fr = {
@@ -415,6 +448,10 @@ const Map<K, String> _fr = {
   K.sheetLifesteal: 'Vol de vie : {0}%',
   K.sheetOnHit: '{0} à l\'attaque : {1}% ({2} dégâts/tour, {3} tours)',
   K.sheetCumulative: 'Cumulé ×{0} :',
+  K.sheetResistImmune: 'Immunité {0}',
+  K.sheetResistFlat: 'Résistance {0} : -{1}/tour',
+  K.sheetResistNegate: 'Résistance {0} : {1}% d\'annulation',
+  K.sheetLifestealResist: 'Vol de vie subi : -{0}%',
   K.dotBurn: 'brûlure',
 
   K.itemFound: 'Objet trouvé !',
@@ -432,6 +469,31 @@ const Map<K, String> _fr = {
   K.rarityUncommon: 'Rare',
   K.rarityLegendary: 'Légendaire',
   K.rarityBoss: 'Boss',
+
+  K.creatureRarityCommon: 'Commun',
+  K.creatureRarityUncommon: 'Peu commun',
+  K.creatureRarityRare: 'Rare',
+  K.creatureRarityEpic: 'Épique',
+  K.creatureRarityLegendary: 'Légendaire',
+  K.creatureRarityMythic: 'Mythique',
+
+  K.tabSummon: 'Invocation',
+  K.summonTitle: 'Invocation',
+  K.summonSubtitle: '×1 : {0} gemmes · ×10 : {1} gemmes — un 4★ garanti',
+  K.summonX1: 'Invoquer ×1 ({0})',
+  K.summonX10: 'Invoquer ×10 ({0})',
+  K.summonFirstFree:
+      'Choisis d\'abord ton héros de départ gratuit dans l\'onglet Partie.',
+  K.summonResultsTitle: 'Résultats de l\'invocation',
+  K.summonNew: 'Nouveau !',
+  K.summonDuplicate: 'Doublon +{0} XP',
+  K.summonDuplicateMaxed: 'Doublon (niveau max)',
+  K.summonTapToContinue: 'Touche pour continuer',
+  K.collectionTitle: 'Collection',
+
+  K.evolveCost: 'Évoluer ({0})',
+  K.evolveTitle: 'Évolution !',
+  K.evolveResult: '{0} → {1}',
 };
 
 const Map<K, String> _en = {
@@ -616,6 +678,10 @@ const Map<K, String> _en = {
   K.sheetLifesteal: 'Lifesteal: {0}%',
   K.sheetOnHit: '{0} on hit: {1}% ({2} damage/turn, {3} turns)',
   K.sheetCumulative: 'Combined ×{0}:',
+  K.sheetResistImmune: 'Immune to {0}',
+  K.sheetResistFlat: '{0} resist: -{1}/turn',
+  K.sheetResistNegate: '{0} resist: {1}% negate',
+  K.sheetLifestealResist: 'Lifesteal taken: -{0}%',
   K.dotBurn: 'burn',
 
   K.itemFound: 'Item found!',
@@ -633,6 +699,30 @@ const Map<K, String> _en = {
   K.rarityUncommon: 'Uncommon',
   K.rarityLegendary: 'Legendary',
   K.rarityBoss: 'Boss',
+
+  K.creatureRarityCommon: 'Common',
+  K.creatureRarityUncommon: 'Uncommon',
+  K.creatureRarityRare: 'Rare',
+  K.creatureRarityEpic: 'Epic',
+  K.creatureRarityLegendary: 'Legendary',
+  K.creatureRarityMythic: 'Mythic',
+
+  K.tabSummon: 'Summon',
+  K.summonTitle: 'Summon',
+  K.summonSubtitle: '×1: {0} gems · ×10: {1} gems — one 4★ guaranteed',
+  K.summonX1: 'Summon ×1 ({0})',
+  K.summonX10: 'Summon ×10 ({0})',
+  K.summonFirstFree: 'Pick your free starting hero in the Run tab first.',
+  K.summonResultsTitle: 'Summon results',
+  K.summonNew: 'New!',
+  K.summonDuplicate: 'Duplicate +{0} XP',
+  K.summonDuplicateMaxed: 'Duplicate (max level)',
+  K.summonTapToContinue: 'Tap to continue',
+  K.collectionTitle: 'Collection',
+
+  K.evolveCost: 'Evolve ({0})',
+  K.evolveTitle: 'Evolution!',
+  K.evolveResult: '{0} → {1}',
 };
 
 const Map<AppLanguage, Map<K, String>> _dictionaries = {
@@ -703,6 +793,13 @@ class AppLocalizations extends InheritedWidget {
   /// Resolves an item's FR/EN text pair for the current language.
   String localized(LocalizedText text) => text.of(language);
 
+  /// Localized display name for a creature [id] (hero or mob). Falls back to
+  /// the raw id for ad-hoc fighters not in the catalog.
+  String creatureName(String id) {
+    final def = creatureById(id);
+    return def == null ? id : def.name.of(language);
+  }
+
   String itemSlot(ItemSlot slot) {
     return switch (slot) {
       ItemSlot.helmet => t(K.slotHelmet),
@@ -710,6 +807,17 @@ class AppLocalizations extends InheritedWidget {
       ItemSlot.chest => t(K.slotChest),
       ItemSlot.weapon => t(K.slotWeapon),
       ItemSlot.relic => t(K.slotRelic),
+    };
+  }
+
+  String creatureRarity(CreatureRarity rarity) {
+    return switch (rarity) {
+      CreatureRarity.common => t(K.creatureRarityCommon),
+      CreatureRarity.uncommon => t(K.creatureRarityUncommon),
+      CreatureRarity.rare => t(K.creatureRarityRare),
+      CreatureRarity.epic => t(K.creatureRarityEpic),
+      CreatureRarity.legendary => t(K.creatureRarityLegendary),
+      CreatureRarity.mythic => t(K.creatureRarityMythic),
     };
   }
 

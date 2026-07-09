@@ -100,7 +100,7 @@ class _BattleControls extends StatelessWidget {
                 return ChoiceChip(
                   selected: battle.selectedTarget == target,
                   label: _TargetPreviewLabel(
-                    name: target.name,
+                    name: context.l10n.creatureName(target.name),
                     preview: battle.previewForTarget(target),
                   ),
                   onSelected: battle.isAnimating || battle.autoAttackEnabled
@@ -126,7 +126,9 @@ class _BattleControls extends StatelessWidget {
                             : context.tr(K.actShort))
                       : (hero == null
                             ? context.tr(K.chooseHero)
-                            : context.tr(K.actWith, [hero.name])),
+                            : context.tr(K.actWith, [
+                                context.l10n.creatureName(hero.name),
+                              ])),
                 ),
               ),
               OutlinedButton.icon(

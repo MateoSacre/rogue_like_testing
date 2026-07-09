@@ -61,6 +61,33 @@ void main() {
     });
   });
 
+  group('Buff engine', () {
+    test('attack and crit buffs feed the fighter getters; no stacking', () {
+      final battle = FakeBattle();
+      final caster = Fighter(name: 'Chief', maxHp: 20, attackPower: 5, baseDefence: 2);
+      final ally = Fighter(name: 'Grunt', maxHp: 20, attackPower: 8, baseDefence: 3);
+      final skill = buffSkill(
+        name: 'War Cry',
+        description: '+4 ATK, +15% crit',
+        attackBonus: 4,
+        critChanceBonus: .15,
+      );
+
+      skill.apply(battle, caster, [ally]);
+      skill.apply(battle, caster, [ally]); // duplicate is ignored
+
+      expect(ally.effects.where((e) => e.name == 'War Cry'), hasLength(1));
+      expect(ally.attack, 12); // 8 base + 4 buff
+      expect(ally.critChance, closeTo(0.25, 1e-9)); // 0.10 base + 0.15
+    });
+
+    test('base crit chance applies with no buffs or items', () {
+      final hero = Fighter(name: 'A', maxHp: 10, attackPower: 5, baseDefence: 1);
+      expect(hero.attack, 5);
+      expect(hero.critChance, closeTo(0.10, 1e-9));
+    });
+  });
+
   group('Skill effects', () {
     test('protect adds a single defence buff', () {
       final battle = FakeBattle();
@@ -82,7 +109,7 @@ void main() {
       skill.apply(battle, caster, [target]);
 
       expect(target.effects.where((effect) => effect.name == 'Protect'), hasLength(1));
-      expect(target.defence, 15);
+      expect(target.defence, 25); // base 5 + Protect +20
       expect(battle.logs, ['Paladin protects Hero']);
     });
 
@@ -110,7 +137,7 @@ void main() {
       expect(target.effects.single.kind, EffectKind.recurrent);
     });
 
-    test('magic healing restores thirty percent of target max HP', () {
+    test('magic healing restores twenty percent of target max HP', () {
       final battle = FakeBattle();
       final caster = Fighter(
         name: 'Priest',
@@ -127,8 +154,8 @@ void main() {
 
       magicHealingSkill().apply(battle, caster, [target]);
 
-      expect(target.hp, 19);
-      expect(battle.logs.single, 'Priest heals Paladin for 9 hp');
+      expect(target.hp, 16);
+      expect(battle.logs.single, 'Priest heals Paladin for 6 hp');
     });
   });
 }

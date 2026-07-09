@@ -4,7 +4,7 @@ class _HeaderLine extends StatelessWidget {
   const _HeaderLine({
     required this.icon,
     required this.title,
-    required this.subtitle,
+    this.subtitle = '',
   });
 
   final IconData icon;
@@ -22,7 +22,7 @@ class _HeaderLine extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleLarge),
-              Text(subtitle),
+              if (subtitle.isNotEmpty) Text(subtitle),
             ],
           ),
         ),

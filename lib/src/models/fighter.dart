@@ -3,6 +3,7 @@ import 'dart:math';
 import '../data/items.dart';
 import '../data/skills.dart';
 import '../game/game_balance.dart';
+import 'creature_rarity.dart';
 import 'enums.dart';
 import 'item.dart';
 import 'skill.dart';
@@ -18,6 +19,7 @@ class Fighter {
     this.value = 0,
     this.isHero = false,
     this.isBoss = false,
+    this.rarity,
     this.aiType = AiType.dumb,
   }) : hp = maxHp,
        initialMaxHp = maxHp,
@@ -36,6 +38,10 @@ class Fighter {
   int value;
   bool isHero;
   bool isBoss;
+
+  /// Rarity tier of the underlying creature, if known (mobs and summonable
+  /// heroes). May be null for ad-hoc fighters built directly in tests.
+  CreatureRarity? rarity;
   AiType aiType;
   int level = 1;
   int xp = 0;
@@ -78,15 +84,51 @@ class Fighter {
   double get lifesteal =>
       heldItems.fold<double>(0, (sum, item) => sum + item.lifesteal);
 
+  /// Fraction (0..1) by which this fighter reduces an attacker's lifesteal.
+  double get lifestealResist => heldItems
+      .fold<double>(0, (sum, item) => sum + item.lifestealResist)
+      .clamp(0.0, 1.0);
+
+  /// True if a held resist matches DoT [type] (its own type, or [generic]).
+  Iterable<DotResist> _resistsFor(DotType type) => heldItems
+      .map((item) => item.dotResist)
+      .whereType<DotResist>()
+      .where((r) => r.type == type || r.type == DotType.generic);
+
+  /// Flat damage removed from each tick of a [type] DoT (summed over items).
+  double dotFlatReduction(DotType type) =>
+      _resistsFor(type).fold<double>(0, (sum, r) => sum + r.flatReduction);
+
+  /// Combined chance (0..1) to negate a single [type] DoT tick.
+  double dotNegateChance(DotType type) =>
+      combinedProcChance(_resistsFor(type).map((r) => r.negateChance));
+
   /// All on-hit effects carried by held items.
   Iterable<ItemOnHit> get onHitEffects =>
       heldItems.map((item) => item.onHit).whereType<ItemOnHit>();
 
-  double get defence {
-    final bonus = effects
+  double get defence => baseDefence + _buffSum((effect) => effect.defenceBonus);
+
+  /// Attack power including temporary buff effects (used for all damage).
+  double get attack => attackPower + _buffSum((effect) => effect.attackBonus);
+
+  /// Critical-hit chance (0..1): base rate, plus item and buff bonuses.
+  double get critChance {
+    final itemBonus = heldItems.fold<double>(
+      0,
+      (sum, item) => sum + item.critChanceBonus,
+    );
+    final total =
+        GameBalance.baseCritChance +
+        itemBonus +
+        _buffSum((effect) => effect.critChanceBonus);
+    return total.clamp(0.0, 1.0);
+  }
+
+  double _buffSum(double Function(StatusEffect effect) selector) {
+    return effects
         .where((effect) => effect.kind == EffectKind.buff)
-        .fold<double>(0, (sum, effect) => sum + effect.defenceBonus);
-    return baseDefence + bonus;
+        .fold<double>(0, (sum, effect) => sum + selector(effect));
   }
 
   String get statusLabel {
@@ -109,6 +151,7 @@ class Fighter {
       value: value,
       isHero: isHero,
       isBoss: isBoss,
+      rarity: rarity,
       aiType: aiType,
     );
     if (isHero) {
@@ -133,6 +176,7 @@ class Fighter {
       'value': value,
       'isHero': isHero,
       'isBoss': isBoss,
+      'rarity': rarity?.name,
       'aiType': aiType.name,
       'level': level,
       'xp': xp,
@@ -159,6 +203,7 @@ class Fighter {
       value: json['value'] as int? ?? 0,
       isHero: json['isHero'] == true,
       isBoss: json['isBoss'] == true,
+      rarity: _rarityFromName(json['rarity'] as String?),
       aiType: AiType.values.firstWhere(
         (type) => type.name == json['aiType'],
         orElse: () => AiType.dumb,
@@ -189,6 +234,14 @@ class Fighter {
           .where((id) => itemById(id) != null),
     );
     return fighter;
+  }
+
+  static CreatureRarity? _rarityFromName(String? name) {
+    if (name == null) return null;
+    for (final rarity in CreatureRarity.values) {
+      if (rarity.name == name) return rarity;
+    }
+    return null;
   }
 
   double takeDamage(double amount) {

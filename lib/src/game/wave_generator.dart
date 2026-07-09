@@ -1,8 +1,10 @@
 import 'dart:math';
 
+import '../data/items.dart';
 import '../data/mobs.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
+import '../models/item.dart';
 import '../models/mob_template.dart';
 import '../models/team.dart';
 import '../models/wave_info.dart';
@@ -24,6 +26,8 @@ class ThemedWaveGenerator {
 
     final category = currentCategory!;
     final isFinal = wavesRemainingInTheme == 1;
+    // totalValue tracks the wave number, which also drives enemy stat scaling.
+    final waveNumber = totalValue;
     final wave = <Fighter>[];
     var remainingValue = totalValue;
     var remainingSlots = GameBalance.maxWaveSize;
@@ -31,7 +35,7 @@ class ThemedWaveGenerator {
     if (isFinal) {
       final hardMob = _selectMob(remainingValue, category, bossesAllowed: true);
       if (hardMob != null) {
-        wave.add(hardMob.build(hardMob.name, random));
+        wave.add(_spawn(hardMob, waveNumber));
         remainingValue -= hardMob.value;
         remainingSlots--;
       }
@@ -40,7 +44,7 @@ class ThemedWaveGenerator {
     while (remainingValue > 0 && remainingSlots > 0) {
       final mob = _selectMob(remainingValue, category, bossesAllowed: false);
       if (mob == null) break;
-      wave.add(mob.build(mob.name, random));
+      wave.add(_spawn(mob, waveNumber));
       remainingValue -= mob.value;
       remainingSlots--;
     }
@@ -51,6 +55,60 @@ class ThemedWaveGenerator {
       category: category,
       finalWaveInTheme: isFinal,
     );
+  }
+
+  /// Builds a mob, applies the wave's power scaling and (past a threshold)
+  /// equips wave-scaled offensive relics.
+  Fighter _spawn(MobTemplate template, int waveNumber) {
+    final fighter = template.build(template.name, random);
+    final scale = GameBalance.waveStatScale(waveNumber);
+    if (scale != 1) {
+      fighter
+        ..maxHp = fighter.maxHp * scale
+        ..attackPower = fighter.attackPower * scale
+        ..baseDefence = fighter.baseDefence * scale
+        ..hp = fighter.maxHp;
+    }
+    _equipEnemyItems(fighter, waveNumber);
+    return fighter;
+  }
+
+  /// Picks the relic rarity enemies carry at [wave] (richer the further in).
+  ItemRarity _enemyRelicRarity(int wave) {
+    final over = wave - GameBalance.enemyItemStartWave;
+    if (over >= 120) return ItemRarity.legendary;
+    if (over >= 50) return ItemRarity.uncommon;
+    return ItemRarity.common;
+  }
+
+  /// Offensive relics only (so enemies threaten with the same procs heroes use).
+  List<ItemDef> _enemyRelicPool(ItemRarity rarity) {
+    return itemsOfRarity(rarity)
+        .where(
+          (item) =>
+              item.isRelic &&
+              (item.lifesteal > 0 ||
+                  item.onHit != null ||
+                  item.extraAttackChance > 0 ||
+                  item.critChanceBonus > 0),
+        )
+        .toList();
+  }
+
+  void _equipEnemyItems(Fighter fighter, int wave) {
+    final count = GameBalance.enemyRelicCount(wave);
+    if (count == 0) return;
+    final pool = _enemyRelicPool(_enemyRelicRarity(wave));
+    if (pool.isEmpty) return;
+    for (var i = 0; i < count; i++) {
+      final def = pool[random.nextInt(pool.length)];
+      fighter.relics.add(def.id);
+      fighter
+        ..maxHp += def.hpBonus
+        ..attackPower += def.atkBonus
+        ..baseDefence += def.defBonus;
+    }
+    fighter.hp = fighter.maxHp;
   }
 
   MobTemplate? _selectMob(
