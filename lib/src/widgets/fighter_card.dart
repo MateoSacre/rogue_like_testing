@@ -298,7 +298,7 @@ class FighterCard extends StatelessWidget {
                                 padding: const EdgeInsets.only(
                                   top: AppLayout.tinyGap,
                                 ),
-                                child: _ItemBadges(fighter: fighter),
+                                child: _ItemBadges(fighter: fighter,compact: compact,),
                               ),
                             if (showDevInfo && !fighter.isHero)
                               Text(
