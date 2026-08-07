@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/battle_controller.dart';
 import '../progression/player_progress.dart';
@@ -11,6 +13,10 @@ class SaveService {
   const SaveService._();
 
   static const fileName = 'roguelite_save.json';
+
+  // Web has no filesystem access; the save is stored under this key in
+  // browser local storage via shared_preferences instead.
+  static const _webPrefsKey = 'roguelite_save';
 
   /// Test hook: when set, the save file lives in this directory instead of
   /// the platform application-support directory. Tests MUST set this so they
@@ -54,6 +60,12 @@ class SaveService {
 
   static Future<Map<String, dynamic>?> load() async {
     try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(_webPrefsKey);
+        if (raw == null) return null;
+        return jsonDecode(raw) as Map<String, dynamic>;
+      }
       final file = await _file();
       if (!await file.exists()) return null;
       final raw = await file.readAsString();
@@ -82,6 +94,11 @@ class SaveService {
     // finishes. The caller still observes a failure on the returned future,
     // but a failed write must not poison the queue for later saves.
     final write = _queue.then((_) async {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_webPrefsKey, encoded);
+        return;
+      }
       final file = await _file();
       await file.writeAsString(encoded);
     });
