@@ -20,20 +20,7 @@ class _BattleSummary extends StatelessWidget {
       runSpacing: AppLayout.controlGap,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text(
-          context.tr(K.round, [battle.roundCounter]),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        Text(
-          '${context.tr(K.heroesAlive, [battle.heroes.alive.length, battle.heroes.members.length])}'
-          '   ${context.tr(K.enemiesAlive, [battle.mobs.alive.length, battle.mobs.members.length])}',
-        ),
         Text(context.tr(K.goldGems, [battle.gold, battle.gems])),
-        Text(
-          context.tr(K.enemyFaction, [
-            context.l10n.mobCategory(battle.waveInfo.category),
-          ]),
-        ),
         OutlinedButton.icon(
           onPressed: state._openInventory,
           icon: const Icon(Icons.inventory_2),
@@ -65,22 +52,6 @@ class _BattleSummary extends StatelessWidget {
       runSpacing: AppLayout.tinyGap,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text(
-          context.tr(K.roundShort, [battle.roundCounter]),
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        Text(
-          context.tr(K.heroesShort, [
-            battle.heroes.alive.length,
-            battle.heroes.members.length,
-          ]),
-        ),
-        Text(
-          context.tr(K.enemiesShort, [
-            battle.mobs.alive.length,
-            battle.mobs.members.length,
-          ]),
-        ),
         Text(context.tr(K.goldShort, [battle.gold])),
         Text(context.tr(K.gemsShort, [battle.gems])),
         IconButton(

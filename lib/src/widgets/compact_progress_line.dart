@@ -17,18 +17,20 @@ class _CompactProgressLine extends StatelessWidget {
     // otherwise split label/bar 50/50 regardless of how short the label is.
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        spacing: AppLayout.controlGap,
         children: [
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 1),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppLayout.progressRadius),
-            child: LinearProgressIndicator(
-              minHeight: 4,
-              value: value.clamp(0, 1).toDouble(),
-              backgroundColor: AppColors.progressTrack(context),
-              valueColor: AlwaysStoppedAnimation(color),
+          Text(label),
+          Expanded(
+            child:
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppLayout.progressRadius),
+              child: LinearProgressIndicator(
+                minHeight: 4,
+                value: value.clamp(0, 1).toDouble(),
+                backgroundColor: AppColors.progressTrack(context),
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
             ),
           ),
         ],

@@ -8,7 +8,6 @@ import '../l10n/app_localizations.dart';
 import '../models/enums.dart';
 import '../models/fighter.dart';
 import '../models/item.dart';
-import '../models/skill_preview.dart';
 import '../models/status_effect.dart';
 import '../models/team.dart';
 import '../persistence/save_service.dart';
@@ -33,7 +32,6 @@ part 'inventory_widgets.dart';
 part 'item_drop_dialog.dart';
 part 'merchant_action.dart';
 part 'merchant_view.dart';
-part 'target_preview_label.dart';
 part 'team_panel.dart';
 
 class GameScreen extends StatefulWidget {
@@ -350,7 +348,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          flex: 36,
           child: _TeamPanel(
             state: this,
             team: battle.mobs,
@@ -359,10 +356,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
         ),
         const SizedBox(height: AppLayout.controlGap),
-        Expanded(flex: 28, child: _centerPanel()),
+        _centerPanel(),
         const SizedBox(height: AppLayout.controlGap),
         Expanded(
-          flex: 36,
           child: _TeamPanel(
             state: this,
             team: battle.heroes,
@@ -374,18 +370,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
   }
 
+  // Sized to its content (not flexed) so the enemy/hero panels above and
+  // below split the remaining space evenly; scrolls instead of overflowing
+  // if the screen is too short to fit the controls at their natural size.
   Widget _centerPanel() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.topCenter,
-          child: SizedBox(
-            width: constraints.maxWidth,
-            child: _BattleControls(state: this, showSummary: true, compact: true),
-          ),
-        );
-      },
+    return SingleChildScrollView(
+      controller: _centerScrollController,
+      child: _BattleControls(state: this, showSummary: true, compact: true),
     );
   }
 

@@ -20,7 +20,6 @@ class _BattleControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final hero = battle.selectedHero;
     final skill = hero?.skill;
-    final targets = battle.targetsForSelectedAction();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -82,36 +81,6 @@ class _BattleControls extends StatelessWidget {
           SizedBox(
             height: compact ? AppLayout.compactGap : AppLayout.controlGap,
           ),
-          if (skill != null && !compact)
-            Text(
-              context.tr(K.skillChargeLine, [
-                skill.name,
-                skill.description,
-                skill.charge,
-                skill.maxCharge,
-              ]),
-            ),
-          if (!compact) ...[
-            const SizedBox(height: AppLayout.sectionGap),
-            Wrap(
-              spacing: AppLayout.controlGap,
-              runSpacing: AppLayout.controlGap,
-              children: targets.map((target) {
-                return ChoiceChip(
-                  selected: battle.selectedTarget == target,
-                  label: _TargetPreviewLabel(
-                    name: context.l10n.creatureName(target.name),
-                    preview: battle.previewForTarget(target),
-                  ),
-                  onSelected: battle.isAnimating || battle.autoAttackEnabled
-                      ? null
-                      : (_) =>
-                            state.update(() => battle.selectedTarget = target),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: AppLayout.sectionGap),
-          ],
           Wrap(
             spacing: AppLayout.controlGap,
             runSpacing: AppLayout.controlGap,

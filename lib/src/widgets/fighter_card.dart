@@ -66,19 +66,20 @@ class FighterCard extends StatelessWidget {
                   constraints.maxWidth - AppLayout.compactGap * 2;
               final availableHeight =
                   constraints.maxHeight - AppLayout.compactGap * 2;
-              // Height-driven and capped absolutely (not a share of width):
-              // the info column needs most of the card's width to fit its
-              // stat rows without wrapping.
               final portraitSize = availableHeight.clamp(
                 0.0,
-                (availableWidth * .4).clamp(0.0, 64.0),
+                (availableWidth * .4).clamp(0.0, 96.0),
               );
               return Padding(
                 padding: const EdgeInsets.all(AppLayout.compactGap),
                 child: Opacity(
                   opacity: fighter.isAlive ? 1 : .42,
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    // Cards can grow taller than their content when a panel
+                    // has few members (see _TeamPanel._compactGrid); center
+                    // instead of stretching so the extra height doesn't pin
+                    // everything to the top with blank space below.
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       CreatureTile(
                         name: context.l10n.creatureName(fighter.name),
@@ -88,114 +89,92 @@ class FighterCard extends StatelessWidget {
                       ),
                       const SizedBox(width: AppLayout.compactGap),
                       Expanded(
-                        // A fixed-scale FittedBox would shrink width along
-                        // with height on any vertical overflow (dev info,
-                        // large text scale). Scrolling instead keeps the
-                        // column's width exactly what Expanded gives it —
-                        // full available width — while staying overflow-safe.
-                        child: SingleChildScrollView(
-                          physics: const NeverScrollableScrollPhysics(),
-                          child: DefaultTextStyle.merge(
-                            style: Theme.of(context).textTheme.bodySmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        context.l10n.creatureName(
-                                          fighter.name,
+                        child: DefaultTextStyle.merge(
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 1,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Row(
+                                      spacing: AppLayout.controlGap,
+                                      children: [
+                                        Text(
+                                          context.l10n.creatureName(fighter.name),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelLarge,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.labelLarge,
-                                      ),
-                                    ),
-                                    if (fighter.effects.isNotEmpty) ...[
-                                      _StatusEffectBadges(
-                                        effects: fighter.effects,
-                                        compact: true,
-                                      ),
-                                    ],
-                                    if (pickable)
-                                      const Icon(
-                                        Icons.touch_app,
-                                        size: AppLayout.iconSmall,
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppLayout.tinyGap),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(
-                                    AppLayout.progressRadius,
-                                  ),
-                                  child: LinearProgressIndicator(
-                                    minHeight: 6,
-                                    value: hpRatio.clamp(0, 1).toDouble(),
-                                    backgroundColor: AppColors.progressTrack(
-                                      context,
-                                    ),
-                                    valueColor: AlwaysStoppedAnimation(
-                                      hpRatio > .5
-                                          ? AppColors.hpHigh
-                                          : (hpRatio > .25
-                                                ? AppColors.hpMedium
-                                                : AppColors.hpLow),
+                                        if (showDevInfo && !fighter.isHero)
+                                          Text(
+                                            context.tr(K.aiInfo, [
+                                              fighter.aiType.name,
+                                            ]),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  context.tr(K.statLineCompact, [
-                                    fmt(fighter.hp),
-                                    fmt(fighter.maxHp),
-                                    fmt(fighter.attackPower),
-                                    fmt(fighter.defence),
-                                  ]),
-                                ),
-                                if (showDevInfo && !fighter.isHero)
-                                  Text(
-                                    context.tr(K.aiInfo, [
-                                      fighter.aiType.name,
-                                    ]),
-                                  ),
-                                if (fighter.itemCount > 0)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: _ItemBadges(
-                                      fighter: fighter,
+                                  if (fighter.effects.isNotEmpty) ...[
+                                    _StatusEffectBadges(
+                                      effects: fighter.effects,
                                       compact: true,
                                     ),
+                                  ],
+                                  if (pickable)
+                                    const Icon(
+                                      Icons.touch_app,
+                                      size: AppLayout.iconSmall,
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: AppLayout.tinyGap),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  AppLayout.progressRadius,
+                                ),
+                                child: LinearProgressIndicator(
+                                  minHeight: 6,
+                                  value: hpRatio.clamp(0, 1).toDouble(),
+                                  backgroundColor: AppColors.progressTrack(
+                                    context,
                                   ),
-                                if (fighter.isHero)
-                                  _CompactProgressLine(
-                                    label: context.tr(K.lvlXpCompact, [
-                                      fighter.level,
-                                      fighter.xp,
-                                      fighter.xpCap,
-                                    ]),
-                                    value: fighter.xpCap == 0
-                                        ? 1
-                                        : fighter.xp / fighter.xpCap,
-                                    color: AppColors.xpProgress,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    hpRatio > .5
+                                        ? AppColors.hpHigh
+                                        : (hpRatio > .25
+                                        ? AppColors.hpMedium
+                                        : AppColors.hpLow),
                                   ),
-                                if (skill != null)
-                                  _CompactProgressLine(
-                                    label:
-                                        '${skill.name} ${skill.charge}/${skill.maxCharge}',
-                                    value: skill.maxCharge == 0
-                                        ? 1
-                                        : skill.charge / skill.maxCharge,
-                                    color: AppColors.skillCharge,
-                                  ),
-                              ],
-                            ),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              if (fighter.isHero)
+                                _CompactProgressLine(
+                                  label: context.tr(K.lvlXpCompact, [
+                                    fighter.level,
+                                    fighter.xp,
+                                    fighter.xpCap,
+                                  ]),
+                                  value: fighter.xpCap == 0
+                                      ? 1
+                                      : fighter.xp / fighter.xpCap,
+                                  color: AppColors.xpProgress,
+                                ),
+                              if (skill != null)
+                                _CompactProgressLine(
+                                  label:
+                                  '${skill.name} ${skill.charge}/${skill.maxCharge}',
+                                  value: skill.maxCharge == 0
+                                      ? 1
+                                      : skill.charge / skill.maxCharge,
+                                  color: AppColors.skillCharge,
+                                ),
+                            ],
                           ),
                         ),
                       ),
@@ -245,9 +224,6 @@ class FighterCard extends StatelessWidget {
                     ),
                     const SizedBox(width: AppLayout.cardPadding),
                     Expanded(
-                      // See the compact variant above: scrolling (not a
-                      // FittedBox) keeps this column's width exactly what
-                      // Expanded gives it, while staying overflow-safe.
                       child: SingleChildScrollView(
                         physics: const NeverScrollableScrollPhysics(),
                         child: Column(

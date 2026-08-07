@@ -53,13 +53,12 @@ class _TeamPanel extends StatelessWidget {
         final columns = _columns();
         final rows = (team.members.length / columns).ceil();
         final safeRows = rows == 0 ? 1 : rows;
-        final preferredHeight = isHeroes
-            ? AppLayout.compactHeroCardHeight
-            : AppLayout.compactEnemyCardHeight;
         final availableHeight =
             constraints.maxHeight - (safeRows - 1) * AppLayout.controlGap;
+        // No upper bound: cards grow to fill the panel so the enemy and hero
+        // sections (equally sized by the caller) never leave blank space.
         final cardHeight = (availableHeight / safeRows)
-            .clamp(isHeroes ? 68.0 : 54.0, preferredHeight)
+            .clamp(isHeroes ? 68.0 : 54.0, double.infinity)
             .toDouble();
 
         return GridView(
