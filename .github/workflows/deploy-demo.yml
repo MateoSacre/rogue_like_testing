@@ -1,0 +1,53 @@
+name: Deploy web demo to portfolio
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout rogue_like_testing
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --release --base-href ./
+
+      - name: Checkout portfolio
+        uses: actions/checkout@v4
+        with:
+          repository: MateoSacre/portfolio
+          token: ${{ secrets.PORTFOLIO_DEPLOY_TOKEN }}
+          path: portfolio
+
+      - name: Sync build into portfolio
+        run: |
+          rm -rf portfolio/projects/Last_Line
+          mkdir -p portfolio/projects/Last_Line
+          cp -r build/web/. portfolio/projects/Last_Line/
+
+      - name: Commit and push if changed
+        working-directory: portfolio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects/Last_Line
+          if git diff --cached --quiet; then
+            echo "No changes to deploy"
+          else
+            git commit -m "Update Last Line demo from ${{ github.repository }}@${{ github.sha }}"
+            git push
+          fi
