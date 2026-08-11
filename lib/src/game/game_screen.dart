@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../data/creatures.dart';
 import '../data/items.dart';
 import '../l10n/app_localizations.dart';
 import '../models/enums.dart';
@@ -187,8 +188,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     final earnedGems = battle.gems;
     _resumeAutoAttackAfterRestart = battle.autoAttackWasEnabledOnGameOver;
-    battle.resetGame(heroes: widget.initialHeroes, gems: earnedGems);
+    battle.resetGame(heroes: _currentTeamHeroes(), gems: earnedGems);
     battle.devMode = settings.devMode;
+  }
+
+  /// Rebuilds the run team from the persistent [PlayerProgress] so restarts
+  /// pick up any level/XP gained (in-run or via duplicates) since the screen
+  /// was first opened, instead of reusing the stale [widget.initialHeroes]
+  /// snapshot.
+  List<Fighter> _currentTeamHeroes() {
+    return buildTeamFromProgress(
+      selectedHeroNames: widget.initialHeroes.map((h) => h.name),
+      levelFor: widget.progress.levelFor,
+      xpFor: widget.progress.xpFor,
+    );
   }
 
   void _resumeRestartedAutoAttackIfReady() {
@@ -202,7 +215,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _resumeAutoAttackAfterRestart = resumeAutoAttack;
       battle.stopAutoAttack();
       battle.resetGame(
-        heroes: widget.initialHeroes,
+        heroes: _currentTeamHeroes(),
         gems: widget.progress.gems,
       );
       battle.devMode = settings.devMode;
